@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { BarChart3, CalendarCheck, ClipboardList, FolderTree, History, LayoutDashboard, Loader2, LogOut, ReceiptText, Users, Wallet } from 'lucide-react'
 import {
   Sidebar,
@@ -33,7 +34,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Utama',
     items: [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/transactions', label: 'Transaksi Kas', icon: ReceiptText },
+      { to: '/transactions', label: 'Mutasi', icon: ReceiptText },
       { to: '/recurring', label: 'Biaya Rutin', icon: CalendarCheck },
       { to: '/fund-requests', label: 'Kas Sekretariat', icon: ClipboardList },
       { to: '/reports', label: 'Laporan', icon: BarChart3 },
@@ -135,9 +136,11 @@ export function AppLayout() {
           <span className="text-sm font-medium">{titles[location.pathname] ?? ''}</span>
         </header>
         <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-          <Suspense fallback={<Loader2 className="mx-auto mt-10 size-6 animate-spin text-muted-foreground" />}>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary resetKey={location.pathname}>
+            <Suspense fallback={<Loader2 className="mx-auto mt-10 size-6 animate-spin text-muted-foreground" />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </SidebarInset>
     </SidebarProvider>

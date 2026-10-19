@@ -62,7 +62,7 @@ class TransactionController extends Controller
 
         return $excel->download('transaksi-'.now()->format('Ymd-His').'.xlsx', [[
             'title' => 'Data Mutasi',
-            'heading' => ['Data Mutasi Transaksi Kas', $period === 's/d' ? 'Semua periode' : "Periode {$period}"],
+            'heading' => ['Data Mutasi', $period === 's/d' ? 'Semua periode' : "Periode {$period}"],
             'headers' => ['Periode', 'Tanggal', 'Nomor', 'Kelompok', 'Kategori', 'Nama', 'Keterangan', 'Masuk', 'Keluar', 'Kas', 'Referensi', 'Catatan'],
             'rows' => $rows,
             'money_from' => 7,

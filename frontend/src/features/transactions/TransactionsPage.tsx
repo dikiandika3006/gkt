@@ -82,7 +82,7 @@ export default function TransactionsPage() {
   return (
     <>
       <PageHeader
-        title="Transaksi Kas"
+        title="Mutasi"
         description="Pencatatan pemasukan dan pengeluaran"
         actions={
           <>
