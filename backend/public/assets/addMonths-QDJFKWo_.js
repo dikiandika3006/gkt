@@ -1,0 +1,1 @@
+import{l as e,u as t}from"./index-BIG1e1uI.js";function n(n,r,i){let a=e(n,i?.in);if(isNaN(r))return t(i?.in||n,NaN);if(!r)return a;let o=a.getDate(),s=t(i?.in||n,a.getTime());return s.setMonth(a.getMonth()+r+1,0),o>=s.getDate()?s:(a.setFullYear(s.getFullYear(),s.getMonth(),o),a)}export{n as t};

@@ -1,1 +1,0 @@
-import{et as e}from"./useRender-CXz8g--O.js";import{n as t}from"./PageHeader-DdWG1bsY.js";var n=e(),r={diajukan:`outline`,ditransfer:`secondary`,lpj_sebagian:`secondary`,selesai:`default`};function i({status:e,label:i}){return(0,n.jsx)(t,{variant:r[e],children:i})}export{i as t};
