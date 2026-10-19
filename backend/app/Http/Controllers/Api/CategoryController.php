@@ -8,9 +8,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
+use App\Services\CategoryCodeGenerator;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
@@ -33,9 +37,31 @@ class CategoryController extends Controller
         return CategoryResource::collection($categories);
     }
 
-    public function store(CategoryRequest $request): CategoryResource
+    public function store(CategoryRequest $request, CategoryCodeGenerator $codes): CategoryResource
     {
-        return new CategoryResource(Category::create($request->validated()));
+        $data = $request->validated();
+
+        // Kode dibuat di dalam transaksi; jika bentrok dengan penyimpanan bersamaan, coba sekali lagi.
+        $category = retry(2, fn () => DB::transaction(fn () => Category::create([
+            ...$data,
+            'code' => $codes->next($data['group'], CategoryType::from($data['type']), CategoryNature::from($data['nature'])),
+        ])), 0, fn ($e) => $e instanceof UniqueConstraintViolationException);
+
+        return new CategoryResource($category);
+    }
+
+    /** Pratinjau kode otomatis untuk form tambah kategori. */
+    public function nextCode(Request $request, CategoryCodeGenerator $codes): JsonResponse
+    {
+        $data = $request->validate([
+            'group' => ['required', 'string', 'max:100'],
+            'type' => ['required', Rule::enum(CategoryType::class)],
+            'nature' => ['required', Rule::enum(CategoryNature::class)],
+        ]);
+
+        return response()->json([
+            'code' => $codes->next($data['group'], CategoryType::from($data['type']), CategoryNature::from($data['nature'])),
+        ]);
     }
 
     public function show(Category $category): CategoryResource

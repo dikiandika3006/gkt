@@ -35,6 +35,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'download']);
     Route::get('/recurring-expenses/status', [RecurringExpenseController::class, 'status']);
     Route::get('/transfers/{group}', [TransferController::class, 'show'])->whereUuid('group');
+    // Harus sebelum categories/{category} agar "next-code" tidak dianggap ID.
+    Route::get('/categories/next-code', [CategoryController::class, 'nextCode'])->middleware('role:admin,bendahara');
     Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
     Route::apiResource('cash-accounts', CashAccountController::class)->only(['index', 'show']);
     Route::apiResource('transactions', TransactionController::class)->only(['index', 'show']);

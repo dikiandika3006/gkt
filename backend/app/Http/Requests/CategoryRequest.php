@@ -12,7 +12,7 @@ class CategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:20', Rule::unique('categories')->ignore($this->route('category'))],
+            // Kode dibuat otomatis oleh server (CategoryCodeGenerator) dan terkunci setelah dibuat.
             'name' => ['required', 'string', 'max:255'],
             'group' => ['required', 'string', 'max:100'],
             'type' => ['required', Rule::enum(CategoryType::class)],
