@@ -1,0 +1,15 @@
+# .htaccess root (public_html/gkt) — dipasang oleh workflow deploy.
+# Document root domain menunjuk ke folder ini, jadi semua akses diteruskan ke backend/public.
+# Folder lain (backend/.env, vendor, storage, .git) tidak bisa diakses dari luar.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Tolak semua file/folder tersembunyi (.git, .env, dst).
+    RewriteRule (^|/)\. - [F,L]
+
+    # Teruskan semua request ke backend/public.
+    RewriteRule ^(?!backend/public/)(.*)$ backend/public/$1 [L]
+</IfModule>

@@ -1,0 +1,114 @@
+# Push ke main -> test -> build -> commit hasil siap-jalan ke branch "deploy".
+# Hostinger (hPanel -> Git) menarik branch "deploy" ke public_html/gkt lewat auto-deploy webhook.
+# Migrasi database dijalankan oleh cron hPanel (post-deploy.sh), karena hosting tanpa SSH.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_sqlite, pdo_mysql, zip, gd, xml, bcmath, fileinfo
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Run tests
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, zip, gd, xml, bcmath, fileinfo
+          tools: composer:v2
+          coverage: none
+
+      - name: Install backend (production)
+        working-directory: backend
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Siapkan branch deploy
+        run: |
+          set -e
+          if git ls-remote --exit-code --heads origin deploy > /dev/null; then
+            git fetch --depth=1 origin deploy
+            git worktree add -B deploy out origin/deploy
+          else
+            git worktree add --detach out
+            git -C out checkout --orphan deploy
+          fi
+          # Kosongkan isi lama (kecuali metadata git) lalu susun ulang.
+          find out -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+
+      - name: Susun paket siap-jalan
+        run: |
+          set -e
+          rsync -a \
+            --exclude '.env' --exclude '.env.backup' --exclude '.env.production' \
+            --exclude 'tests/' --exclude 'phpunit.xml' --exclude 'node_modules/' \
+            backend/ out/backend/
+          # Frontend hasil build disajikan dari backend/public (satu domain).
+          cp -R frontend/dist/. out/backend/public/
+          cp deploy/public.htaccess out/backend/public/.htaccess
+          cp deploy/root.htaccess out/.htaccess
+          cp deploy/post-deploy.sh out/post-deploy.sh
+          echo "$GITHUB_SHA" > out/backend/DEPLOYED_COMMIT
+
+      - name: Commit & push ke branch deploy
+        working-directory: out
+        env:
+          SOURCE_MESSAGE: ${{ github.event.head_commit.message || 'manual' }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # -f: vendor/ & file build masuk meski ada di .gitignore.
+          git add -A -f .
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan untuk dideploy."
+          else
+            git commit -m "Deploy ${GITHUB_SHA::7}: $(printf '%s' "$SOURCE_MESSAGE" | head -n 1)"
+            git push origin deploy
+          fi

@@ -1,0 +1,3 @@
+# Script deploy dijalankan di server Linux: wajib LF.
+*.sh text eol=lf
+*.htaccess text eol=lf

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   ArrowDownLeft,
@@ -457,7 +457,6 @@ function StatusDot({ active }: { active: boolean }) {
 }
 
 const schema = z.object({
-  code: z.string().trim().min(1, 'Kode wajib diisi').max(20),
   name: z.string().trim().min(1, 'Nama wajib diisi').max(255),
   group: z.string().trim().min(1, 'Kelompok wajib diisi').max(100),
   type: z.enum(['income', 'expense', 'both']),
@@ -486,12 +485,24 @@ function CategoryFormDialog({
   // Kategori yang sudah dipakai hanya boleh tetap atau berubah ke "dua arah" (aturan backend).
   const typeOptions = used && category ? TYPE_OPTIONS.filter((o) => o.value === category.type || o.value === 'both') : TYPE_OPTIONS
 
+  // Pratinjau kode otomatis (hanya saat tambah). Kode final tetap ditentukan server saat simpan.
+  const [group, type, nature] = useWatch({ control, name: ['group', 'type', 'nature'] })
+  const [previewParams, setPreviewParams] = useState<{ group: string; type: string; nature: string } | null>(null)
+  useEffect(() => {
+    const timer = setTimeout(() => setPreviewParams(group?.trim() ? { group: group.trim(), type, nature } : null), 300)
+    return () => clearTimeout(timer)
+  }, [group, type, nature])
+  const preview = useQuery({
+    queryKey: ['categories', 'next-code', previewParams],
+    queryFn: async () => (await api.get<{ code: string }>('/categories/next-code', { params: previewParams })).data.code,
+    enabled: open && !category && !!previewParams,
+  })
+
   useEffect(() => {
     if (!open) return
     reset(
       category
         ? {
-            code: category.code,
             name: category.name,
             group: category.group,
             type: category.type,
@@ -499,14 +510,16 @@ function CategoryFormDialog({
             description: category.description ?? '',
             is_active: category.is_active,
           }
-        : { code: '', name: '', group: '', type: 'expense', nature: 'operational', description: '', is_active: true },
+        : { name: '', group: '', type: 'expense', nature: 'operational', description: '', is_active: true },
     )
   }, [open, category, reset])
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => (category ? api.put(`/categories/${category.id}`, values) : api.post('/categories', values)),
-    onSuccess: () => {
-      toast.success('Kategori disimpan')
+    mutationFn: async (values: FormValues) =>
+      (category ? await api.put<{ data: Category }>(`/categories/${category.id}`, values) : await api.post<{ data: Category }>('/categories', values)).data
+        .data,
+    onSuccess: (saved) => {
+      toast.success(category ? 'Kategori disimpan' : `Kategori ditambahkan dengan kode ${saved.code}`)
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       onOpenChange(false)
     },
@@ -525,8 +538,23 @@ function CategoryFormDialog({
         </DialogHeader>
         <form id="category-form" onSubmit={handleSubmit((v) => mutation.mutate(v))} className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Kode" htmlFor="code" error={errors.code?.message}>
-              <Input id="code" placeholder="mis. 5-201" {...register('code')} aria-invalid={!!errors.code} />
+            <FormField label="Kode">
+              <div className="flex h-8 items-center gap-2 rounded-lg border border-dashed bg-muted/50 px-2.5 text-sm">
+                {category ? (
+                  <>
+                    <Lock className="size-3.5 text-muted-foreground" />
+                    <span className="font-mono">{category.code}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">tidak bisa diubah</span>
+                  </>
+                ) : preview.data ? (
+                  <>
+                    <span className="font-mono font-medium text-primary">{preview.data}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">otomatis</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">{preview.isFetching ? 'Menghitung kode...' : 'Otomatis setelah kelompok diisi'}</span>
+                )}
+              </div>
             </FormField>
             <FormField label="Kelompok" htmlFor="group" error={errors.group?.message}>
               <Input id="group" list="category-groups" placeholder="mis. Pengeluaran" {...register('group')} aria-invalid={!!errors.group} />
