@@ -1,0 +1,46 @@
+# .htaccess backend/public untuk server produksi — dipasang oleh workflow deploy
+# (menggantikan .htaccess bawaan Laravel hanya di branch "deploy").
+# Satu domain untuk keduanya: /api/* -> Laravel, file statis langsung, selain itu -> React (index.html).
+
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header (token Sanctum)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Tolak file tersembunyi.
+    RewriteRule (^|/)\. - [F,L]
+
+    # API & route Laravel lain -> front controller.
+    RewriteRule ^(api|up|sanctum)(/.*)?$ index.php [L]
+
+    # File/folder yang ada (assets, logo, dst) dilayani langsung.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Selain itu: halaman React (client-side routing, mis. /categories).
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # index.html jangan di-cache agar versi baru langsung terpakai setelah deploy.
+    <FilesMatch "^index\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+    # File hasil build punya hash di namanya, aman di-cache lama.
+    <FilesMatch "\.(js|css|woff2?)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>

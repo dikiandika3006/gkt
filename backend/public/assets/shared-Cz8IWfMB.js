@@ -1,0 +1,1 @@
+import{et as e}from"./card-BpfKXHmA.js";import{n as t}from"./PageHeader-B1vjyNCY.js";var n=e(),r={diajukan:`outline`,ditransfer:`secondary`,lpj_sebagian:`secondary`,selesai:`default`};function i({status:e,label:i}){return(0,n.jsx)(t,{variant:r[e],children:i})}export{i as t};
