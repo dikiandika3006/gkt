@@ -1,14 +1,17 @@
 <?php
 
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BankImportController;
+use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CashAccountController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CounterpartyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FundRequestController;
+use App\Http\Controllers\Api\InsightController;
 use App\Http\Controllers\Api\RecurringExpenseController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TransactionController;
@@ -24,6 +27,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Semua role boleh membaca.
     Route::get('/dashboard', DashboardController::class);
+    Route::get('/insights', InsightController::class);
+    Route::get('/budgets', [BudgetController::class, 'index']);
+    Route::get('/assistant/starters', [AssistantController::class, 'starters']);
+    Route::post('/assistant/ask', [AssistantController::class, 'ask'])->middleware('throttle:30,1');
     Route::get('/reports/summary', [ReportController::class, 'summary']);
     Route::get('/reports/cash-flow', [ReportController::class, 'cashFlow']);
     Route::get('/reports/monthly', [ReportController::class, 'monthly']);
@@ -51,6 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('cash-accounts', CashAccountController::class)->except(['index', 'show']);
         Route::apiResource('transactions', TransactionController::class)->except(['index', 'show']);
         Route::apiResource('recurring-expenses', RecurringExpenseController::class)->except(['index', 'show']);
+        Route::post('/budgets/copy', [BudgetController::class, 'copy']);
+        Route::apiResource('budgets', BudgetController::class)->only(['store', 'update', 'destroy']);
         Route::post('/transfers', [TransferController::class, 'store']);
         Route::put('/transfers/{group}', [TransferController::class, 'update'])->whereUuid('group');
         Route::delete('/transfers/{group}', [TransferController::class, 'destroy'])->whereUuid('group');

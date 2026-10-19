@@ -8,6 +8,7 @@ const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const TransactionsPage = lazy(() => import('@/features/transactions/TransactionsPage'))
 const BankImportPage = lazy(() => import('@/features/transactions/BankImportPage'))
 const RecurringExpensesPage = lazy(() => import('@/features/recurring/RecurringExpensesPage'))
+const BudgetsPage = lazy(() => import('@/features/budgets/BudgetsPage'))
 const FundRequestsPage = lazy(() => import('@/features/fund-requests/FundRequestsPage'))
 const FundRequestDetailPage = lazy(() => import('@/features/fund-requests/FundRequestDetailPage'))
 const CategoriesPage = lazy(() => import('@/features/categories/CategoriesPage'))
@@ -30,6 +31,7 @@ export default function App() {
                 <Route path="transactions/import" element={<BankImportPage />} />
               </Route>
               <Route path="recurring" element={<RecurringExpensesPage />} />
+              <Route path="budgets" element={<BudgetsPage />} />
               <Route path="fund-requests" element={<FundRequestsPage />} />
               <Route path="fund-requests/:id" element={<FundRequestDetailPage />} />
               <Route path="reports" element={<ReportsPage />} />

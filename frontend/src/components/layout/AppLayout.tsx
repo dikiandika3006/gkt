@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { BarChart3, CalendarCheck, ClipboardList, FolderTree, History, LayoutDashboard, Loader2, LogOut, ReceiptText, Users, Wallet } from 'lucide-react'
+import { BarChart3, CalendarCheck, ClipboardList, FolderTree, History, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Users, Wallet } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
+import { AssistantChat } from '@/features/assistant/AssistantChat'
 import { useAuth } from '@/features/auth/AuthContext'
 import type { Role } from '@/types'
 
@@ -36,6 +37,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/transactions', label: 'Mutasi', icon: ReceiptText },
       { to: '/recurring', label: 'Biaya Rutin', icon: CalendarCheck },
+      { to: '/budgets', label: 'Anggaran', icon: PiggyBank },
       { to: '/fund-requests', label: 'Kas Sekretariat', icon: ClipboardList },
       { to: '/reports', label: 'Laporan', icon: BarChart3 },
     ],
@@ -135,7 +137,8 @@ export function AppLayout() {
           <Separator orientation="vertical" className="mr-2 h-4" />
           <span className="text-sm font-medium">{titles[location.pathname] ?? ''}</span>
         </header>
-        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+        {/* pb ekstra: ruang untuk tombol "Tanya Keuangan" yang mengambang */}
+        <main className="flex flex-1 flex-col gap-6 p-4 pb-24 md:p-6 md:pb-24">
           <ErrorBoundary resetKey={location.pathname}>
             <Suspense fallback={<Loader2 className="mx-auto mt-10 size-6 animate-spin text-muted-foreground" />}>
               <Outlet />
@@ -143,6 +146,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
       </SidebarInset>
+      <AssistantChat />
     </SidebarProvider>
   )
 }

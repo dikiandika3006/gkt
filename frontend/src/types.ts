@@ -318,3 +318,48 @@ export interface ActivityLog {
   after: Record<string, unknown> | null
   created_at: string
 }
+
+export type BudgetStatus = 'aman' | 'waspada' | 'lewat' | 'tercapai' | 'tertinggal'
+
+export interface BudgetRow {
+  id: number
+  year: number
+  category_id: number
+  category: { id: number; code: string; name: string; group: string } | null
+  type: TransactionType
+  type_label: string
+  amount: number
+  notes: string | null
+  actual: number
+  expected_to_date: number
+  percentage: number
+  remaining: number
+  status: BudgetStatus
+}
+
+export interface BudgetReport {
+  year: number
+  elapsed: number
+  rows: BudgetRow[]
+  totals: { expense_budget: number; expense_actual: number; income_budget: number; income_actual: number }
+}
+
+export type InsightSeverity = 'danger' | 'warning' | 'info' | 'success'
+
+export interface Insight {
+  key: string
+  severity: InsightSeverity
+  title: string
+  message: string
+  recommendation: string | null
+  link: string | null
+  items: { label: string; value: number; note?: string }[]
+}
+
+export interface AssistantAnswer {
+  text: string
+  items: { label: string; value: number; note?: string }[]
+  suggestions: string[]
+  link: string | null
+  intent: string | null
+}
