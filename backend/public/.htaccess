@@ -30,6 +30,10 @@ DirectoryIndex index.html index.php
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
+    # File build yang sudah tidak ada (tab lama setelah deploy) -> 404, jangan dibalas index.html
+    # agar browser tidak memuat HTML sebagai JavaScript (layar blank).
+    RewriteRule ^assets/ - [R=404,L]
+
     # Selain itu: halaman React (client-side routing, mis. /categories).
     RewriteRule ^ index.html [L]
 </IfModule>
