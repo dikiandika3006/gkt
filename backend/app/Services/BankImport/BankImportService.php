@@ -197,28 +197,14 @@ class BankImportService
         $amount = (float) $row['amount'];
         $text = Str::upper($row['description']);
 
-        // (a) Pola dari import sebelumnya dengan nama pengirim/penerima yang sama.
-        if ($account && mb_strlen($row['name']) >= 4) {
-            $ref = Transaction::where('cash_account_id', $account->id)
-                ->where('type', $type->value)
-                ->whereNotNull('bank_ref')
-                ->where('bank_description', 'like', '%'.$row['name'].'%')
-                ->latest('date')->latest('id')
-                ->value('bank_ref');
+        // Riwayat import ke nama pengirim/penerima yang sama, terbaru dulu (dikelompokkan per baris bank).
+        $history = $account ? $this->history($account->id, $type, $row['name']) : collect();
 
-            if ($ref) {
-                $previous = Transaction::where('bank_ref', $ref)->orderBy('id')->get();
-                $sameAmount = abs($previous->sum('amount') - $amount) < 0.001;
-                $lines = ($sameAmount ? $previous : $previous->take(1))->map(fn (Transaction $t) => $this->line(
-                    $t->category_id,
-                    $sameAmount ? (float) $t->amount : $amount,
-                    $t->counterparty,
-                    $t->recurring_expense_id,
-                    $row['date'],
-                ));
-
-                return $lines->values()->all();
-            }
+        // (a) Riwayat dengan nominal sama persis: salin pola pecahan, nama & biaya rutinnya.
+        $exact = $history->first(fn (Collection $lines) => abs($lines->sum('amount') - $amount) < 0.001);
+        if ($exact) {
+            return $exact->map(fn (Transaction $t) => $this->line($t->category_id, (float) $t->amount, $t->counterparty, $t->recurring_expense_id, $row['date']))
+                ->values()->all();
         }
 
         // (b) Biaya rutin: nominal sama & nama penerima mirip.
@@ -241,8 +227,36 @@ class BankImportService
             }
         }
 
-        // (d) Kosong, nama tetap diusulkan.
+        // (d) Riwayat nominal berbeda (cadangan): kategori & nama terakhir, tanpa biaya rutin.
+        $latest = $history->first()?->first();
+        if ($latest) {
+            return [$this->line($latest->category_id, $amount, $latest->counterparty, null, $row['date'])];
+        }
+
+        // (e) Kosong, nama tetap diusulkan.
         return [$this->line(null, $amount, $counterparty, null, $row['date'])];
+    }
+
+    /** @return Collection<int, Collection<int, Transaction>> pecahan per baris bank, baris bank terbaru dulu. */
+    private function history(int $cashAccountId, TransactionType $type, string $name): Collection
+    {
+        if (mb_strlen($name) < 4) {
+            return collect();
+        }
+
+        $refs = Transaction::where('cash_account_id', $cashAccountId)
+            ->where('type', $type->value)
+            ->whereNotNull('bank_ref')
+            ->where('bank_description', 'like', '%'.$name.'%')
+            ->select('bank_ref')
+            ->groupBy('bank_ref')
+            ->orderByRaw('MAX(date) DESC, MAX(id) DESC')
+            ->limit(20)
+            ->pluck('bank_ref');
+
+        $lines = Transaction::whereIn('bank_ref', $refs)->orderBy('id')->get()->groupBy('bank_ref');
+
+        return $refs->map(fn (string $ref) => $lines[$ref])->values();
     }
 
     private function line(?int $categoryId, float $amount, ?string $counterparty, ?int $recurringId, string $date): array

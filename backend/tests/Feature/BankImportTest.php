@@ -135,6 +135,41 @@ class BankImportTest extends TestCase
         $this->assertSame('2026-10', $line['recurring_period']);
     }
 
+    public function test_recurring_match_beats_history_with_different_amount(): void
+    {
+        // Sebelumnya pernah impor penggantian BBM Rp 100rb ke penerima yang sama.
+        Transaction::factory()->expense()->create([
+            'cash_account_id' => $this->bank->id, 'date' => '2026-09-10', 'amount' => 100_000,
+            'category_id' => $this->category('Biaya BBM & Tol')->id, 'counterparty' => 'Lz Andi',
+            'bank_ref' => sha1('bbm'), 'bank_description' => 'TRSF E-BANKING DB 1009/FTSCY/WS95051 100000.00  BBM  ANDI PRATAMA',
+        ]);
+        $item = RecurringExpense::create([
+            'name' => 'Tunjangan HT Lz Andi', 'category_id' => $this->category('Tunjangan Hamba Tuhan')->id,
+            'counterparty' => 'Lz Andi Pratama', 'amount' => 2_000_000,
+        ]);
+
+        $line = $this->preview()['rows'][2]['lines'][0];
+
+        $this->assertSame($item->id, $line['recurring_expense_id']);
+        $this->assertSame($this->category('Tunjangan Hamba Tuhan')->id, $line['category_id']);
+    }
+
+    public function test_history_with_different_amount_is_last_resort(): void
+    {
+        // Penerima BI-FAST tanpa kata kunci & tanpa biaya rutin: pakai kategori riwayat terakhir.
+        Transaction::factory()->expense()->create([
+            'cash_account_id' => $this->bank->id, 'date' => '2026-09-10', 'amount' => 750_000,
+            'category_id' => $this->category('Viatikum')->id, 'counterparty' => 'Citra',
+            'bank_ref' => sha1('viatikum'), 'bank_description' => 'BI-FAST DB TRANSFER   KE 535 CITRA LESTARI  KBB',
+        ]);
+
+        $line = $this->preview()['rows'][4]['lines'][0];
+
+        $this->assertSame($this->category('Viatikum')->id, $line['category_id']);
+        $this->assertEquals(1_000_000, $line['amount']);
+        $this->assertNull($line['recurring_expense_id']);
+    }
+
     public function test_existing_manual_transaction_is_flagged_as_possible_duplicate(): void
     {
         Transaction::factory()->expense()->create([
