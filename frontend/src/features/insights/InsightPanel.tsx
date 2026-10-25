@@ -1,6 +1,7 @@
+import { useId, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { AlertTriangle, ArrowRight, CheckCircle2, Info, Lightbulb, OctagonAlert, Sparkles, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronUp, Info, Lightbulb, OctagonAlert, Sparkles, type LucideIcon } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api'
@@ -59,6 +60,9 @@ export function InsightPanel() {
 function InsightCard({ insight }: { insight: Insight }) {
   const style = STYLE[insight.severity]
   const Icon = style.icon
+  // Rincian nominal disembunyikan sampai pengguna meminta.
+  const [showItems, setShowItems] = useState(false)
+  const itemsId = useId()
 
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl border p-3', style.card)}>
@@ -74,7 +78,20 @@ function InsightCard({ insight }: { insight: Insight }) {
       <p className="text-sm text-muted-foreground">{insight.message}</p>
 
       {insight.items.length > 0 && (
-        <ul className="grid gap-1 text-sm">
+        <button
+          type="button"
+          aria-expanded={showItems}
+          aria-controls={itemsId}
+          onClick={() => setShowItems((v) => !v)}
+          className="inline-flex items-center gap-1 self-start text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          {showItems ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          {showItems ? 'Sembunyikan detail' : `Tampilkan detail (${insight.items.length})`}
+        </button>
+      )}
+
+      {showItems && insight.items.length > 0 && (
+        <ul id={itemsId} className="grid gap-1 text-sm">
           {insight.items.map((item) => (
             <li key={item.label} className="flex items-center justify-between gap-2">
               <span className="truncate">{item.label}</span>
