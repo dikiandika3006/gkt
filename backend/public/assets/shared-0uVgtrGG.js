@@ -1,0 +1,1 @@
+import{xt as e}from"./useRender-D7AcE-2T.js";import{n as t}from"./PageHeader-CdhCTTvf.js";var n=e(),r={diajukan:`outline`,ditransfer:`secondary`,lpj_sebagian:`secondary`,selesai:`default`};function i({status:e,label:i}){return(0,n.jsx)(t,{variant:r[e],children:i})}export{i as t};
