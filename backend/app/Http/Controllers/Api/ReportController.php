@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Module;
 use App\Http\Controllers\Controller;
 use App\Models\CashAccount;
 use App\Services\ExcelExportService;
@@ -65,6 +66,9 @@ class ReportController extends Controller
 
     public function export(Request $request, ExcelExportService $excel, string $name): StreamedResponse
     {
+        $module = $name === 'secretariat' ? Module::ReportSecretariat : Module::Reports;
+        abort_unless($request->user()->hasPermission($module), 403, 'Anda tidak memiliki akses untuk aksi ini.');
+
         return match ($name) {
             'cash-flow' => $this->exportCashFlow($request, $excel),
             'monthly' => $this->exportMonthly($request, $excel),

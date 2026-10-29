@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-XKyaHtl9.js";import{yt as t}from"./api-Bz5TvmTX.js";var n=e(t(),1);function r(e,t=15){let[r,i]=(0,n.useState)(1),[a,o]=(0,n.useState)(t),s=Math.max(1,Math.ceil(e.length/a)),c=Math.min(r,s);return{rows:e.slice((c-1)*a,c*a),page:c,pageSize:a,total:e.length,setPage:i,setPageSize:e=>{o(e),i(1)}}}export{r as t};

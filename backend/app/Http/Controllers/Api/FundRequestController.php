@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\FundRequestStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FundReportItemRequest;
 use App\Http\Requests\FundRequestRequest;
 use App\Http\Resources\FundRequestResource;
+use App\Models\CashAccount;
 use App\Models\FundReportItem;
 use App\Models\FundRequest;
+use App\Services\FinanceReportService;
 use App\Services\FundRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +38,35 @@ class FundRequestController extends Controller
             ->get();
 
         return FundRequestResource::collection($requests);
+    }
+
+    /**
+     * Ringkasan per kas yang dipakai pengajuan dana (saldo, pengajuan aktif, LPJ belum selesai).
+     * Dipakai halaman & dashboard Kas Sekretariat agar tidak perlu data dashboard keuangan gereja.
+     */
+    public function summary(Request $request, FinanceReportService $report): JsonResponse
+    {
+        $data = $request->validate(['cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id']]);
+
+        $requests = FundRequest::with(['items', 'transfers', 'report.items'])->get()->groupBy('cash_account_id');
+        $accountIds = $requests->keys()->push($data['cash_account_id'] ?? null)->filter()->unique();
+
+        $accounts = CashAccount::whereIn('id', $accountIds)->orderBy('code')->get()->map(function (CashAccount $account) use ($requests, $report) {
+            $statuses = ($requests[$account->id] ?? collect())->map(fn (FundRequest $r) => $r->status());
+            $latest = ($requests[$account->id] ?? collect())->sortByDesc('period')->first();
+
+            return [
+                'id' => $account->id,
+                'code' => $account->code,
+                'name' => $account->name,
+                'balance' => $report->balance($account->id),
+                'active_requests' => $statuses->filter(fn ($s) => $s !== FundRequestStatus::Completed)->count(),
+                'pending_reports' => $statuses->filter(fn ($s) => in_array($s, [FundRequestStatus::Transferred, FundRequestStatus::PartiallyReported], true))->count(),
+                'latest' => $latest ? ['id' => $latest->id, 'number' => $latest->number, 'period' => $latest->period, 'status' => $latest->status()->value, 'status_label' => $latest->status()->label()] : null,
+            ];
+        })->values();
+
+        return response()->json(['data' => $accounts]);
     }
 
     public function store(FundRequestRequest $request): FundRequestResource
