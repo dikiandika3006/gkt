@@ -227,7 +227,6 @@ function Crosscheck({ report, canWrite, onSaved }: { report: OfferingReport; can
         <CardHeader className="flex flex-row flex-wrap items-end justify-between gap-3 pb-3">
           <div>
             <CardTitle className="text-base">Mutasi masuk Rekening Gereja</CardTitle>
-            <CardDescription>Default Senin–Sabtu setelah ibadah. Mutasi yang sudah dipakai rekap lain tidak ditampilkan.</CardDescription>
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <Input
