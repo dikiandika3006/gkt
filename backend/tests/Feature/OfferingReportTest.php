@@ -109,15 +109,17 @@ class OfferingReportTest extends TestCase
 
         $a = $this->deposit('2026-10-26', 5_000_000);
         $b = $this->deposit('2026-10-28', 2_294_500);
-        $this->deposit('2026-10-24', 1_000); // sebelum rentang default (Senin–Sabtu setelah 25 Okt)
+        $this->deposit('2026-10-24', 1_000); // di dalam periode persembahan 23–29 Okt
+        $this->deposit('2026-10-30', 2_000); // setelah periode → tidak tampil
         $this->deposit('2026-10-27', 99_000, 'transfer'); // mutasi antar kas tidak ditampilkan
         Transaction::factory()->create(['date' => '2026-10-27', 'type' => TransactionType::Expense, 'cash_account_id' => $this->church->id]);
 
+        // Rentang default = periode persembahan rekap.
         $this->getJson("/api/offering-reports/{$id}/candidates")
             ->assertOk()
-            ->assertJsonPath('start_date', '2026-10-26')
-            ->assertJsonPath('end_date', '2026-10-31')
-            ->assertJsonCount(2, 'data');
+            ->assertJsonPath('start_date', '2026-10-23')
+            ->assertJsonPath('end_date', '2026-10-29')
+            ->assertJsonCount(3, 'data');
 
         $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id]])
             ->assertJsonPath('data.summary.status', 'kurang')
