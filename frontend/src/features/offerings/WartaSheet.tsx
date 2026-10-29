@@ -21,7 +21,7 @@ function periodText(start: string, end: string): string {
 }
 
 /**
- * Lembar "Laporan Pemasukan Mingguan" untuk warta jemaat.
+ * Lembar "Laporan Persembahan Mingguan" untuk warta jemaat.
  * Warna sengaja tetap (tidak ikut mode gelap) agar hasil screenshot/cetak selalu sama.
  */
 export function WartaSheet({ report }: { report: OfferingReport }) {
@@ -35,7 +35,7 @@ export function WartaSheet({ report }: { report: OfferingReport }) {
       <style>{PRINT_CSS}</style>
 
       <div className="rounded-xl bg-gradient-to-r from-[#1e3a9a] via-[#2a56c6] to-[#3b82f6] py-4 text-center text-2xl font-bold tracking-wide text-white">
-        Laporan Pemasukan Mingguan
+        Laporan Persembahan Mingguan
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-[15px]">
@@ -44,9 +44,6 @@ export function WartaSheet({ report }: { report: OfferingReport }) {
         </span>
         <span>
           <b>Periode:</b> {periodText(report.period_start, report.period_end)}
-        </span>
-        <span>
-          <b>Kategori:</b> Rekap Persembahan Mingguan
         </span>
       </div>
 
