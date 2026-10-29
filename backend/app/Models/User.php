@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\Module;
+use App\Enums\PermissionLevel;
 use App\Enums\UserRole;
+use App\Services\PermissionService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -42,5 +45,15 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    /** Hak akses modul sesuai menu Hak Akses. Sengaja tidak memakai nama can() (bentrok dengan Authorizable). */
+    public function hasPermission(Module|string $module, PermissionLevel|string $level = PermissionLevel::View): bool
+    {
+        return app(PermissionService::class)->allows(
+            $this,
+            $module instanceof Module ? $module : Module::from($module),
+            $level instanceof PermissionLevel ? $level : PermissionLevel::from($level),
+        );
     }
 }

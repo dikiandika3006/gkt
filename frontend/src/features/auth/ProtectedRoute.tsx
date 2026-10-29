@@ -1,10 +1,17 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from './AuthContext'
-import type { Role } from '@/types'
+import type { Module, Role } from '@/types'
 
-export function ProtectedRoute({ roles }: { roles?: Role[] }) {
-  const { user, loading, hasRole } = useAuth()
+interface Props {
+  roles?: Role[]
+  /** Modul hak akses (menu Hak Akses) yang wajib dimiliki. */
+  module?: Module
+  level?: 'view' | 'manage'
+}
+
+export function ProtectedRoute({ roles, module, level = 'view' }: Props) {
+  const { user, loading, hasRole, can } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -17,6 +24,7 @@ export function ProtectedRoute({ roles }: { roles?: Role[] }) {
 
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />
   if (roles && !hasRole(...roles)) return <Navigate to="/" replace />
+  if (module && !can(module, level)) return <Navigate to="/" replace />
 
   return <Outlet />
 }

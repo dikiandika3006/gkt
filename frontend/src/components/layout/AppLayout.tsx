@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { BarChart3, CalendarCheck, ClipboardList, FolderTree, History, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Users, Wallet } from 'lucide-react'
+import { BarChart3, CalendarCheck, ClipboardList, FolderTree, HandCoins, History, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Settings2, ShieldCheck, Users, Wallet } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -21,13 +21,15 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { AssistantChat } from '@/features/assistant/AssistantChat'
 import { useAuth } from '@/features/auth/AuthContext'
-import type { Role } from '@/types'
+import type { Module, Role } from '@/types'
 
 interface NavItem {
   to: string
   label: string
   icon: typeof LayoutDashboard
   roles?: Role[]
+  /** Tampil bila punya hak Lihat pada salah satu modul ini. */
+  modules?: Module[]
 }
 
 const navGroups: { label: string; items: NavItem[] }[] = [
@@ -35,20 +37,23 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Utama',
     items: [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/transactions', label: 'Mutasi', icon: ReceiptText },
-      { to: '/recurring', label: 'Biaya Rutin', icon: CalendarCheck },
-      { to: '/budgets', label: 'Anggaran', icon: PiggyBank },
-      { to: '/fund-requests', label: 'Kas Sekretariat', icon: ClipboardList },
-      { to: '/reports', label: 'Laporan', icon: BarChart3 },
+      { to: '/transactions', label: 'Mutasi', icon: ReceiptText, modules: ['transactions'] },
+      { to: '/offerings', label: 'Rekap Persembahan', icon: HandCoins, modules: ['offerings'] },
+      { to: '/recurring', label: 'Biaya Rutin', icon: CalendarCheck, modules: ['recurring'] },
+      { to: '/budgets', label: 'Anggaran', icon: PiggyBank, modules: ['budgets'] },
+      { to: '/fund-requests', label: 'Kas Sekretariat', icon: ClipboardList, modules: ['fund_requests'] },
+      { to: '/reports', label: 'Laporan', icon: BarChart3, modules: ['reports', 'report_secretariat'] },
     ],
   },
   {
     label: 'Master Data',
     items: [
-      { to: '/categories', label: 'Kategori', icon: FolderTree },
-      { to: '/cash-accounts', label: 'Kas & Bank', icon: Wallet },
+      { to: '/categories', label: 'Kategori', icon: FolderTree, modules: ['categories'] },
+      { to: '/cash-accounts', label: 'Kas & Bank', icon: Wallet, modules: ['cash_accounts'] },
+      { to: '/offerings/settings', label: 'Pos Persembahan', icon: Settings2, modules: ['offerings'] },
       { to: '/users', label: 'Pengguna', icon: Users, roles: ['admin'] },
       { to: '/activity-logs', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
+      { to: '/permissions', label: 'Hak Akses', icon: ShieldCheck, roles: ['admin'] },
     ],
   },
 ]
@@ -56,11 +61,24 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 const titles: Record<string, string> = Object.fromEntries(navGroups.flatMap((g) => g.items.map((i) => [i.to, i.label])))
 
 export function AppLayout() {
-  const { user, hasRole, logout } = useAuth()
+  const { user, hasRole, can, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
-  const isActive = (to: string) => (to === '/' ? location.pathname === '/' : location.pathname.startsWith(to))
+  // Menu aktif = path terpanjang yang cocok, agar /offerings/settings tidak ikut menyalakan /offerings.
+  const activeTo = navGroups
+    .flatMap((g) => g.items.map((i) => i.to))
+    .filter((to) => (to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)))
+    .sort((a, b) => b.length - a.length)[0]
+  const isActive = (to: string) => to === activeTo
+
+  // Menu disaring per role & hak akses modul; kelompok tanpa menu tidak ditampilkan.
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => (!item.roles || hasRole(...item.roles)) && (!item.modules || item.modules.some((m) => can(m)))),
+    }))
+    .filter((group) => group.items.length > 0)
 
   const onLogout = async () => {
     await logout()
@@ -87,21 +105,19 @@ export function AppLayout() {
         </SidebarHeader>
 
         <SidebarContent>
-          {navGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <SidebarGroup key={group.label}>
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {group.items
-                    .filter((item) => !item.roles || hasRole(...item.roles))
-                    .map((item) => (
-                      <SidebarMenuItem key={item.to}>
-                        <SidebarMenuButton isActive={isActive(item.to)} tooltip={item.label} render={<NavLink to={item.to} />}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                  {group.items.map((item) => (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton isActive={isActive(item.to)} tooltip={item.label} render={<NavLink to={item.to} />}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -146,7 +162,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
       </SidebarInset>
-      <AssistantChat />
+      {can('dashboard') && <AssistantChat />}
     </SidebarProvider>
   )
 }

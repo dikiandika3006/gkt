@@ -1,39 +1,45 @@
+import { Navigate } from 'react-router'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/PageHeader'
+import { useAuth } from '@/features/auth/AuthContext'
+import type { Module } from '@/types'
 import { CashFlowTab } from './CashFlowTab'
 import { CategoryRankingTab } from './CategoryRankingTab'
 import { MonthlyTab } from './MonthlyTab'
 import { SecretariatTab } from './SecretariatTab'
 import { SummaryTab } from './SummaryTab'
 
+const TABS: { value: string; label: string; module: Module; content: () => React.ReactNode }[] = [
+  { value: 'monthly', label: 'Rekap Bulanan', module: 'reports', content: () => <MonthlyTab /> },
+  { value: 'summary', label: 'Ringkasan Periode', module: 'reports', content: () => <SummaryTab /> },
+  { value: 'cash-flow', label: 'Buku Kas', module: 'reports', content: () => <CashFlowTab /> },
+  { value: 'categories', label: 'Analisa Kategori', module: 'reports', content: () => <CategoryRankingTab /> },
+  { value: 'secretariat', label: 'Sekretariat', module: 'report_secretariat', content: () => <SecretariatTab /> },
+]
+
 export default function ReportsPage() {
+  const { can } = useAuth()
+  const tabs = TABS.filter((t) => can(t.module))
+
+  if (tabs.length === 0) return <Navigate to="/" replace />
+
   return (
     <>
       <PageHeader title="Laporan Keuangan" description="Semua laporan bisa diekspor ke Excel atau dicetak / disimpan sebagai PDF" />
 
-      <Tabs defaultValue="monthly">
+      <Tabs defaultValue={tabs[0].value}>
         <TabsList className="flex-wrap print:hidden">
-          <TabsTrigger value="monthly">Rekap Bulanan</TabsTrigger>
-          <TabsTrigger value="summary">Ringkasan Periode</TabsTrigger>
-          <TabsTrigger value="cash-flow">Buku Kas</TabsTrigger>
-          <TabsTrigger value="categories">Analisa Kategori</TabsTrigger>
-          <TabsTrigger value="secretariat">Sekretariat</TabsTrigger>
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
-        <TabsContent value="monthly" className="grid gap-4">
-          <MonthlyTab />
-        </TabsContent>
-        <TabsContent value="summary" className="grid gap-4">
-          <SummaryTab />
-        </TabsContent>
-        <TabsContent value="cash-flow" className="grid gap-4">
-          <CashFlowTab />
-        </TabsContent>
-        <TabsContent value="categories" className="grid gap-4">
-          <CategoryRankingTab />
-        </TabsContent>
-        <TabsContent value="secretariat" className="grid gap-4">
-          <SecretariatTab />
-        </TabsContent>
+        {tabs.map((t) => (
+          <TabsContent key={t.value} value={t.value} className="grid gap-4">
+            {t.content()}
+          </TabsContent>
+        ))}
       </Tabs>
     </>
   )

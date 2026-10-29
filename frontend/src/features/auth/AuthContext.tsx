@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, tokenStorage } from '@/lib/api'
-import type { Role, User } from '@/types'
+import type { Module, PermissionLevel, Role, User } from '@/types'
 
 interface AuthContextValue {
   user: User | null
@@ -8,11 +8,11 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   hasRole: (...roles: Role[]) => boolean
-  /** Boleh mencatat transaksi kas, transfer, master data (admin & bendahara). */
-  canWrite: boolean
-  /** Boleh membuat pengajuan dana & LPJ (admin, bendahara, sekretariat). */
-  canManageFunds: boolean
+  /** Hak akses modul sesuai menu Hak Akses (admin selalu penuh). */
+  can: (module: Module, level?: Exclude<PermissionLevel, 'none'>) => boolean
 }
+
+const RANK: Record<PermissionLevel, number> = { none: 0, view: 1, manage: 2 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -46,15 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => {
     const hasRole = (...roles: Role[]) => !!user && roles.includes(user.role)
-    return {
-      user,
-      loading,
-      login,
-      logout,
-      hasRole,
-      canWrite: hasRole('admin', 'bendahara'),
-      canManageFunds: hasRole('admin', 'bendahara', 'sekretariat'),
-    }
+    const can = (module: Module, level: Exclude<PermissionLevel, 'none'> = 'view') =>
+      !!user && (user.role === 'admin' || RANK[user.permissions?.[module] ?? 'none'] >= RANK[level])
+    return { user, loading, login, logout, hasRole, can }
   }, [user, loading, login, logout])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

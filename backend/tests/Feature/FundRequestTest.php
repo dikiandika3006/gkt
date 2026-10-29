@@ -81,6 +81,8 @@ class FundRequestTest extends TestCase
         $this->assertEquals('lpj_sebagian', $data['summary']['status']);
 
         // Nota tercatat sebagai pengeluaran operasional gereja di bulan nota, dari kas sekretariat.
+        // Laporan keuangan gereja hanya untuk role dengan hak "reports" (bukan sekretariat).
+        Sanctum::actingAs($this->bendahara);
         $this->getJson('/api/reports/summary?start_date=2026-10-01&end_date=2026-10-31')
             ->assertJsonPath('expense', 2_600_000)
             ->assertJsonPath('closing_balance', 7_400_000);

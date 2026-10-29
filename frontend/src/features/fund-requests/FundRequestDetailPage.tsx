@@ -24,7 +24,10 @@ export default function FundRequestDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { canWrite, canManageFunds } = useAuth()
+  const { can } = useAuth()
+  // Transfer dana = aksi bendahara (Mutasi); pengajuan & LPJ = Kas Sekretariat.
+  const canWrite = can('transactions', 'manage')
+  const canManageFunds = can('fund_requests', 'manage')
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)

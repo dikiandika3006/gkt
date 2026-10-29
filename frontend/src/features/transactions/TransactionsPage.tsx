@@ -24,7 +24,7 @@ import { TransferFormDialog } from './TransferFormDialog'
 const ALL = '__all'
 
 export default function TransactionsPage() {
-  const { canWrite } = useAuth()
+  const canWrite = useAuth().can('transactions', 'manage')
   const queryClient = useQueryClient()
   const [filters, setFilters] = useState({ start_date: '', end_date: '', type: '', category_id: '', cash_account_id: '', search: '' })
   const [page, setPage] = useState(1)

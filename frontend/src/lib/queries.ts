@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { CashAccount, Category, RecurringExpense, TransactionType } from '@/types'
+import type { CashAccount, Category, FundAccountSummary, RecurringExpense, TransactionType } from '@/types'
 
 export function useCategories(params: { type?: TransactionType | ''; activeOnly?: boolean; excludeTransfer?: boolean } = {}) {
   return useQuery({
@@ -31,6 +31,15 @@ export function useRecurringExpenses() {
   return useQuery({
     queryKey: ['recurring-expenses'],
     queryFn: async () => (await api.get<{ data: RecurringExpense[] }>('/recurring-expenses')).data.data,
+  })
+}
+
+/** Ringkasan kas pengajuan dana (saldo, pengajuan aktif, LPJ belum selesai). Ikut ter-refresh saat ['fund-requests'] di-invalidate. */
+export function useFundAccountSummary(cashAccountId?: string) {
+  return useQuery({
+    queryKey: ['fund-requests', 'summary', cashAccountId ?? ''],
+    queryFn: async () =>
+      (await api.get<{ data: FundAccountSummary[] }>('/fund-requests/summary', { params: { cash_account_id: cashAccountId || undefined } })).data.data,
   })
 }
 

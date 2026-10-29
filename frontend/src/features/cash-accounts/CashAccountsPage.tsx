@@ -36,7 +36,7 @@ type FormValues = z.input<typeof schema>
 type FormOutput = z.output<typeof schema>
 
 export default function CashAccountsPage() {
-  const { canWrite } = useAuth()
+  const canWrite = useAuth().can('cash_accounts', 'manage')
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<CashAccount | null>(null)

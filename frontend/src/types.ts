@@ -12,7 +12,38 @@ export interface User {
   role: Role
   role_label: string
   is_active: boolean
+  /** Hak akses per modul (menu Hak Akses). */
+  permissions: Record<Module, PermissionLevel>
   created_at: string
+}
+
+export type Module =
+  | 'dashboard'
+  | 'transactions'
+  | 'offerings'
+  | 'recurring'
+  | 'budgets'
+  | 'fund_requests'
+  | 'reports'
+  | 'report_secretariat'
+  | 'categories'
+  | 'cash_accounts'
+export type PermissionLevel = 'none' | 'view' | 'manage'
+
+export interface PermissionMatrix {
+  roles: { value: Exclude<Role, 'admin'>; label: string }[]
+  modules: { key: Module; label: string; description: string; levels: PermissionLevel[]; defaults: Record<string, PermissionLevel> }[]
+  permissions: Record<string, Record<Module, PermissionLevel>>
+}
+
+export interface FundAccountSummary {
+  id: number
+  code: string
+  name: string
+  balance: number
+  active_requests: number
+  pending_reports: number
+  latest: { id: number; number: string; period: string; status: string; status_label: string } | null
 }
 
 export interface Category {
@@ -362,4 +393,98 @@ export interface AssistantAnswer {
   suggestions: string[]
   link: string | null
   intent: string | null
+}
+
+export type OfferingSection = 'ibadah' | 'syukur' | 'perpuluhan' | 'lainnya' | 'pengeluaran'
+export type OfferingCheckStatus = 'belum' | 'cocok' | 'kurang' | 'lebih'
+
+export interface OfferingSummary {
+  sections: Record<OfferingSection, number>
+  total_offering: number
+  total_expense: number
+  expected_deposit: number
+  other_destination_total: number
+  matched: number
+  difference: number
+  status: OfferingCheckStatus
+}
+
+export interface OfferingLine {
+  id?: number
+  section: OfferingSection
+  offering_fund_id?: number | null
+  fund?: { id: number; name: string } | null
+  label: string | null
+  name: string | null
+  amount: number
+  destination_cash_account_id: number | null
+  destination?: { id: number; code: string; name: string; bank_name?: string | null; account_number?: string | null } | null
+  destination_note: string | null
+}
+
+export interface OfferingReport {
+  id: number
+  service_date: string
+  period_start: string
+  period_end: string
+  notes: string | null
+  creator?: { id: number; name: string } | null
+  lines?: OfferingLine[]
+  transactions?: { id: number; number: string; date: string; description: string; counterparty: string | null; category: string | null; amount: number }[]
+  summary: OfferingSummary
+}
+
+export interface OfferingHistory {
+  period: { year: number; month: number }
+  month_summary: { weeks: number; sections: Record<OfferingSection, number>; total_offering: number; total_expense: number }
+  data: { id: number; service_date: string; period_start: string; period_end: string; summary: OfferingSummary }[]
+}
+
+export interface OfferingCandidate {
+  id: number
+  number: string
+  date: string
+  description: string
+  bank_description: string | null
+  counterparty: string | null
+  category: string | null
+  amount: number
+  linked: boolean
+}
+
+export interface OfferingFundOption {
+  id: number
+  name: string
+  /** Teks rekening, mis. "BRI 123 a.n. Komisi Diakonia". */
+  account: string
+}
+
+export interface OfferingTemplate {
+  service_date: string
+  week_of_month: number
+  fund: OfferingFundOption | null
+  ibadah_lines: { label: string; offering_fund_id: number | null; account: string }[]
+  funds: OfferingFundOption[]
+  default_cash_account_id: number | null
+  main_account: string
+}
+
+export interface OfferingFundSetting {
+  id?: number
+  /** Kunci sementara untuk pos baru (belum punya id) agar bisa dirujuk jadwal. */
+  key?: string
+  name: string
+  cash_account_id: number | null
+  bank_name: string | null
+  account_number: string | null
+  account_holder: string | null
+  is_active: boolean
+  account?: string
+  used?: boolean
+}
+
+export interface OfferingSettings {
+  funds: OfferingFundSetting[]
+  schedule: Record<string, number | null>
+  services: string[]
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Module;
+use App\Enums\PermissionLevel;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AttachmentResource;
@@ -17,10 +19,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** Lampiran bukti (nota/kwitansi). File disimpan privat & hanya bisa diunduh user yang login. */
 class AttachmentController extends Controller
 {
-    /** Jenis induk lampiran => [model, role yang boleh menulis]. */
+    /** Jenis induk lampiran => [model, modul hak akses]. Tulis butuh Kelola, unduh butuh Lihat. */
     private const TYPES = [
-        'transaction' => [Transaction::class, [UserRole::Admin, UserRole::Bendahara]],
-        'fund_report_item' => [FundReportItem::class, [UserRole::Admin, UserRole::Bendahara, UserRole::Sekretariat]],
+        'transaction' => [Transaction::class, Module::Transactions],
+        'fund_report_item' => [FundReportItem::class, Module::FundRequests],
     ];
 
     public function store(Request $request): AttachmentResource
@@ -34,8 +36,8 @@ class AttachmentController extends Controller
             'file.max' => 'Ukuran file maksimal 5 MB.',
         ]);
 
-        [$class, $roles] = self::TYPES[$data['attachable_type']];
-        abort_unless($request->user()->hasRole(...$roles), 403, 'Anda tidak memiliki akses untuk aksi ini.');
+        [$class, $module] = self::TYPES[$data['attachable_type']];
+        abort_unless($request->user()->hasPermission($module, PermissionLevel::Manage), 403, 'Anda tidak memiliki akses untuk aksi ini.');
 
         /** @var Model $parent */
         $parent = $class::findOrFail($data['attachable_id']);
@@ -52,8 +54,9 @@ class AttachmentController extends Controller
         return new AttachmentResource($attachment);
     }
 
-    public function download(Attachment $attachment): StreamedResponse
+    public function download(Request $request, Attachment $attachment): StreamedResponse
     {
+        abort_unless($this->allowed($request, $attachment, PermissionLevel::View), 403, 'Anda tidak memiliki akses untuk aksi ini.');
         abort_unless(Storage::disk(Attachment::DISK)->exists($attachment->path), 404, 'File tidak ditemukan.');
 
         return Storage::disk(Attachment::DISK)->response($attachment->path, $attachment->original_name);
@@ -61,11 +64,18 @@ class AttachmentController extends Controller
 
     public function destroy(Request $request, Attachment $attachment): JsonResponse
     {
-        $roles = collect(self::TYPES)->firstWhere(0, $attachment->attachable_type)[1] ?? [UserRole::Admin];
-        abort_unless($request->user()->hasRole(...$roles), 403, 'Anda tidak memiliki akses untuk aksi ini.');
+        abort_unless($this->allowed($request, $attachment, PermissionLevel::Manage), 403, 'Anda tidak memiliki akses untuk aksi ini.');
 
         $attachment->delete();
 
         return response()->json(['message' => 'Lampiran dihapus.']);
+    }
+
+    /** Hak atas lampiran mengikuti modul induknya; jenis tak dikenal hanya untuk admin. */
+    private function allowed(Request $request, Attachment $attachment, PermissionLevel $level): bool
+    {
+        $module = collect(self::TYPES)->firstWhere(0, $attachment->attachable_type)[1] ?? null;
+
+        return $module ? $request->user()->hasPermission($module, $level) : $request->user()->hasRole(UserRole::Admin);
     }
 }

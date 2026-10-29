@@ -20,12 +20,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/PageHeader'
+import { useAuth } from '@/features/auth/AuthContext'
 import { InsightPanel } from '@/features/insights/InsightPanel'
 import { api } from '@/lib/api'
 import { formatCompact, formatDate, formatRupiah } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DashboardData } from '@/types'
 import { Meter } from './Meter'
+import { SecretariatDashboard } from './SecretariatDashboard'
 import { StatTile } from './StatTile'
 import { deltaTone, percentChange, resilienceLevel } from './utils'
 
@@ -38,7 +40,14 @@ const RESILIENCE = {
   aman: { label: 'Aman', icon: ShieldCheck, text: 'text-success', meter: 'good' },
 } as const
 
+/** Isi dashboard mengikuti hak akses: keuangan gereja lengkap, atau khusus Kas Sekretariat. */
 export default function DashboardPage() {
+  const { can } = useAuth()
+  if (can('dashboard')) return <ChurchDashboard />
+  return <SecretariatDashboard />
+}
+
+function ChurchDashboard() {
   const [range, setRange] = useState<6 | 12>(12)
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],

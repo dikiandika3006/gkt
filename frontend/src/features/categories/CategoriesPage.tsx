@@ -82,7 +82,7 @@ type QuickFilter = 'all' | CategoryType | 'inactive'
 const isSystem = (c: Category) => c.nature === 'transfer'
 
 export default function CategoriesPage() {
-  const { canWrite } = useAuth()
+  const canWrite = useAuth().can('categories', 'manage')
   const queryClient = useQueryClient()
   const { data: categories = [], isLoading } = useCategories()
 

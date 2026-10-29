@@ -38,7 +38,7 @@ const thisYear = new Date().getFullYear()
 const YEAR_OPTIONS = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => ({ value: String(y), label: String(y) }))
 
 export default function BudgetsPage() {
-  const { canWrite } = useAuth()
+  const canWrite = useAuth().can('budgets', 'manage')
   const queryClient = useQueryClient()
   const [year, setYear] = useState(thisYear)
   const [formOpen, setFormOpen] = useState(false)

@@ -12,14 +12,14 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { useClientPagination } from '@/hooks/use-client-pagination'
 import { api } from '@/lib/api'
 import { formatDate, formatRupiah } from '@/lib/format'
-import { useCashAccounts } from '@/lib/queries'
-import type { DashboardData, FundRequest } from '@/types'
+import { useCashAccounts, useFundAccountSummary } from '@/lib/queries'
+import type { FundRequest } from '@/types'
 import { FundRequestFormDialog } from './FundRequestFormDialog'
 import { StatusBadge } from './shared'
 import { signedClass } from './utils'
 
 export default function FundRequestsPage() {
-  const { canManageFunds } = useAuth()
+  const canManageFunds = useAuth().can('fund_requests', 'manage')
   const navigate = useNavigate()
   const { data: cashAccounts = [] } = useCashAccounts()
   const [selected, setSelected] = useState('')
@@ -37,11 +37,8 @@ export default function FundRequestsPage() {
     queryFn: async () => (await api.get<{ data: FundRequest[] }>('/fund-requests', { params: { cash_account_id: accountId, year } })).data.data,
     enabled: !!accountId,
   })
-  const dashboard = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: async () => (await api.get<DashboardData>('/dashboard')).data,
-  })
-  const balance = dashboard.data?.balances.find((b) => String(b.id) === accountId)?.balance
+  const summary = useFundAccountSummary(accountId)
+  const balance = summary.data?.find((a) => String(a.id) === accountId)?.balance
   const pager = useClientPagination(requests.data ?? [])
 
   return (

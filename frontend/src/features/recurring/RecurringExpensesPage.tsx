@@ -28,7 +28,9 @@ const STATUS_BADGE: Record<RecurringStatusValue, { label: string; variant: 'outl
 }
 
 export default function RecurringExpensesPage() {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  // Catat pembayaran membuat transaksi (Mutasi); daftar item dikelola di modul Biaya Rutin.
+  const canWrite = can('transactions', 'manage')
   const [period, setPeriod] = useState(() => format(new Date(), 'yyyy-MM'))
   const [draft, setDraft] = useState<TransactionDraft | null>(null)
 
@@ -196,7 +198,7 @@ export default function RecurringExpensesPage() {
         </TabsContent>
 
         <TabsContent value="items">
-          <RecurringItems canWrite={canWrite} />
+          <RecurringItems canWrite={can('recurring', 'manage')} />
         </TabsContent>
       </Tabs>
 
