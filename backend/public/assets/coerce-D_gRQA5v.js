@@ -1,1 +1,0 @@
-import{g as e,s as t}from"./dialog-uITTxr7F.js";function n(n){return e(t,n)}export{n as t};
