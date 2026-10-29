@@ -140,12 +140,10 @@ class OfferingReportService
         ];
     }
 
-    /** Rentang default crosscheck: Senin s/d Sabtu setelah tanggal ibadah. @return array{0: Carbon, 1: Carbon} */
+    /** Rentang default crosscheck: periode persembahan rekap (mis. 23–29 Okt). @return array{0: Carbon, 1: Carbon} */
     public function defaultWindow(OfferingReport $report): array
     {
-        $start = $report->service_date->copy()->addDay();
-
-        return [$start, $start->copy()->addDays(5)];
+        return [$report->period_start->copy(), $report->period_end->copy()];
     }
 
     /** Mutasi masuk kandidat setoran: pemasukan non-mutasi-antar-kas yang belum dipakai rekap lain. */
