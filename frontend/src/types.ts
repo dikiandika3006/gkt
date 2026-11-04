@@ -315,7 +315,8 @@ export interface FundRequest {
   cash_account?: { id: number; code: string; name: string }
   creator?: { id: number; name: string } | null
   items?: { id: number; description: string; amount: number }[]
-  transfers?: { transfer_group: string; number: string; date: string; amount: number; description: string }[]
+  /** id = transaksi sisi masuk (kas sekretariat), untuk lampiran bukti transfer. */
+  transfers?: { id: number; transfer_group: string; number: string; date: string; amount: number; description: string; attachments: Attachment[] }[]
   report?: { id: number; notes: string | null; submitted_at: string | null; items: FundReportItem[] } | null
   summary: FundRequestSummary
 }

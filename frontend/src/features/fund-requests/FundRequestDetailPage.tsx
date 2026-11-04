@@ -190,6 +190,17 @@ export default function FundRequestDetailPage() {
                   <TableCell className="pl-4">
                     <div>{formatDate(t.date)}</div>
                     <div className="font-mono text-xs text-muted-foreground">{t.number}</div>
+                    {/* Bukti transfer: diunggah bendahara (Kelola Mutasi), dilihat semua yang bisa membuka Kas Sekretariat. */}
+                    <div className="mt-1.5">
+                      <AttachmentList
+                        attachableType="transaction"
+                        attachableId={t.id}
+                        attachments={t.attachments ?? []}
+                        canEdit={canWrite}
+                        label="Lampirkan bukti"
+                        onChanged={() => queryClient.invalidateQueries({ queryKey: key })}
+                      />
+                    </div>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{formatRupiah(t.amount)}</TableCell>
                   {canWrite && (

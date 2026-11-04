@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\Attachment;
 use App\Models\CashAccount;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -132,6 +135,44 @@ class FundRequestTest extends TestCase
         Sanctum::actingAs($this->sekretariat);
         $this->deleteJson("/api/fund-report-items/{$item['id']}")->assertOk()->assertJsonPath('data.summary.reported', 0);
         $this->assertSoftDeleted($tx);
+    }
+
+    public function test_transfer_proof_attachment_bendahara_uploads_secretariat_views(): void
+    {
+        Storage::fake(Attachment::DISK);
+        $id = $this->createRequest('2026-10', 1_000_000);
+        $this->transfer($id, 1_000_000, '2026-10-01');
+
+        Sanctum::actingAs($this->bendahara);
+        $transferId = $this->getJson("/api/fund-requests/{$id}")->json('data.transfers.0.id');
+        $file = UploadedFile::fake()->image('bukti-transfer.jpg');
+        $attachmentId = $this->post('/api/attachments', ['attachable_type' => 'transaction', 'attachable_id' => $transferId, 'file' => $file], ['Accept' => 'application/json'])
+            ->assertCreated()->json('data.id');
+
+        // Sekretariat: bukti tampil & bisa diunduh, tapi tidak bisa unggah/hapus.
+        Sanctum::actingAs($this->sekretariat);
+        $this->getJson("/api/fund-requests/{$id}")->assertJsonPath('data.transfers.0.attachments.0.id', $attachmentId);
+        $this->get("/api/attachments/{$attachmentId}")->assertOk();
+        $this->deleteJson("/api/attachments/{$attachmentId}")->assertForbidden();
+        $this->post('/api/attachments', ['attachable_type' => 'transaction', 'attachable_id' => $transferId, 'file' => UploadedFile::fake()->image('x.jpg')], ['Accept' => 'application/json'])
+            ->assertForbidden();
+
+        // Viewer bisa melihat.
+        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Viewer]));
+        $this->get("/api/attachments/{$attachmentId}")->assertOk();
+    }
+
+    public function test_secretariat_cannot_view_attachments_of_ordinary_transactions(): void
+    {
+        Storage::fake(Attachment::DISK);
+        $tx = Transaction::factory()->create(['cash_account_id' => $this->bank->id]);
+
+        Sanctum::actingAs($this->bendahara);
+        $attachmentId = $this->post('/api/attachments', ['attachable_type' => 'transaction', 'attachable_id' => $tx->id, 'file' => UploadedFile::fake()->image('nota.jpg')], ['Accept' => 'application/json'])
+            ->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($this->sekretariat);
+        $this->get("/api/attachments/{$attachmentId}")->assertForbidden();
     }
 
     public function test_report_can_be_marked_complete(): void
