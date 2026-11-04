@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\FundRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,6 +15,7 @@ class FundReportItemResource extends JsonResource
             'date' => $this->date->toDateString(),
             'category_id' => $this->category_id,
             'category' => $this->whenLoaded('category', fn () => $this->category?->only('id', 'code', 'name')),
+            'uncategorized' => $this->whenLoaded('category', fn () => $this->category?->code === FundRequestService::UNCATEGORIZED, false),
             'description' => $this->description,
             'qty' => (float) $this->qty,
             'unit' => $this->unit,

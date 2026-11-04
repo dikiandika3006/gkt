@@ -16,6 +16,7 @@ import { formatDate, formatRupiah } from '@/lib/format'
 import type { FundReportItem, FundRequest } from '@/types'
 import { FundRequestFormDialog } from './FundRequestFormDialog'
 import { ReportItemFormDialog } from './ReportItemFormDialog'
+import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from './shared'
 import { TransferToRequestDialog } from './TransferToRequestDialog'
 import { signedClass } from './utils'
@@ -92,6 +93,7 @@ export default function FundRequestDetailPage() {
 
   const s = request.summary
   const items = request.report?.items ?? []
+  const uncategorized = items.filter((i) => i.uncategorized).length
   const submitted = !!request.report?.submitted_at
 
   return (
@@ -234,7 +236,10 @@ export default function FundRequestDetailPage() {
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-3">
           <div>
             <CardTitle>LPJ (Laporan Pertanggungjawaban)</CardTitle>
-            <CardDescription>Satu baris per nota. Lampirkan foto/scan nota.</CardDescription>
+            <CardDescription>
+              Satu baris per nota. Lampirkan foto/scan nota.
+              {uncategorized > 0 && <span className="font-medium text-warning"> {uncategorized} nota belum dikategorikan — bendahara mengisi kategorinya lewat tombol ubah.</span>}
+            </CardDescription>
           </div>
           {canManageFunds && (
             <Button
@@ -275,7 +280,15 @@ export default function FundRequestDetailPage() {
                   <div>{item.description}</div>
                   {item.transaction_number && <div className="font-mono text-xs text-muted-foreground">{item.transaction_number}</div>}
                 </TableCell>
-                <TableCell>{item.category?.name}</TableCell>
+                <TableCell>
+                  {item.uncategorized ? (
+                    <Badge variant="outline" className="border-warning/50 text-warning">
+                      Belum dikategorikan
+                    </Badge>
+                  ) : (
+                    item.category?.name
+                  )}
+                </TableCell>
                 <TableCell className="text-right text-xs whitespace-nowrap text-muted-foreground tabular-nums">
                   {item.qty} {item.unit ?? ''} × {formatRupiah(item.unit_price)}
                 </TableCell>

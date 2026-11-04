@@ -296,6 +296,8 @@ export interface FundReportItem {
   date: string
   category_id: number
   category?: { id: number; code: string; name: string } | null
+  /** Masih di kategori sementara "Belum Dikategorikan" (diisi bendahara). */
+  uncategorized?: boolean
   description: string
   qty: number
   unit: string | null

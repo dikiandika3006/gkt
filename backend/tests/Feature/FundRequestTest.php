@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CategoryNature;
+use App\Enums\CategoryType;
 use App\Enums\UserRole;
 use App\Models\Attachment;
 use App\Models\CashAccount;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\CategoryCodeGenerator;
+use App\Services\FundRequestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -173,6 +177,41 @@ class FundRequestTest extends TestCase
 
         Sanctum::actingAs($this->sekretariat);
         $this->get("/api/attachments/{$attachmentId}")->assertForbidden();
+    }
+
+    public function test_nota_without_category_is_uncategorized_until_bendahara_fills_it(): void
+    {
+        $id = $this->createRequest('2026-10', 1_000_000);
+        $this->transfer($id, 1_000_000, '2026-10-01');
+
+        // Sekretariat menyimpan nota tanpa kategori.
+        Sanctum::actingAs($this->sekretariat);
+        $data = $this->postJson("/api/fund-requests/{$id}/report/items", [
+            'date' => '2026-10-05', 'category_id' => null, 'description' => 'Kertas', 'qty' => 1, 'unit_price' => 150_000,
+        ])->assertOk()->json('data');
+
+        $item = $data['report']['items'][0];
+        $this->assertTrue($item['uncategorized']);
+        $this->assertSame(FundRequestService::UNCATEGORIZED, $item['category']['code']);
+        $this->assertEquals(150_000, $data['summary']['reported']);
+        $this->assertSame(FundRequestService::UNCATEGORIZED, Transaction::where('fund_report_item_id', $item['id'])->first()->category->code);
+
+        // Bendahara mengisi kategori → nota & transaksinya ikut berganti.
+        Sanctum::actingAs($this->bendahara);
+        $updated = $this->putJson("/api/fund-report-items/{$item['id']}", [
+            'date' => '2026-10-05', 'category_id' => $this->atk->id, 'description' => 'Kertas', 'qty' => 1, 'unit_price' => 150_000,
+        ])->assertOk()->json('data.report.items.0');
+
+        $this->assertFalse($updated['uncategorized']);
+        $this->assertSame($this->atk->id, Transaction::where('fund_report_item_id', $item['id'])->first()->category_id);
+    }
+
+    public function test_uncategorized_category_does_not_affect_auto_category_codes(): void
+    {
+        FundRequestService::uncategorizedCategory();
+        Category::factory()->expense()->create(['code' => '5-100', 'group' => 'Pengeluaran']);
+
+        $this->assertSame('5-101', app(CategoryCodeGenerator::class)->next('Pengeluaran', CategoryType::Expense, CategoryNature::Operational));
     }
 
     public function test_report_can_be_marked_complete(): void

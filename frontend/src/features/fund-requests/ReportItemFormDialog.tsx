@@ -14,10 +14,12 @@ import { api, errorMessage, fieldErrors } from '@/lib/api'
 import { formatRupiah, toDateInput } from '@/lib/format'
 import { useCategories } from '@/lib/queries'
 import type { FundReportItem, FundRequest } from '@/types'
+import { UNCATEGORIZED_CODE } from './utils'
 
 const schema = z.object({
   date: z.string().min(1, 'Tanggal wajib diisi'),
-  category_id: z.string().min(1, 'Kategori wajib dipilih'),
+  // Boleh kosong: nota masuk "Belum Dikategorikan" sampai kategori diisi bendahara.
+  category_id: z.string().optional(),
   description: z.string().trim().min(1, 'Uraian wajib diisi').max(255),
   qty: z.coerce.number<string>().positive('Harus > 0'),
   unit: z.string().max(30).optional(),
@@ -41,7 +43,8 @@ export function ReportItemFormDialog({ open, onOpenChange, request, item, onSave
   })
   const errors = formState.errors
   const total = (Number(watch('qty')) || 0) * (Number(watch('unit_price')) || 0)
-  const operational = categories.filter((c) => c.nature === 'operational')
+  // Kategori sementara tidak ditawarkan: cukup dikosongkan.
+  const operational = categories.filter((c) => c.nature === 'operational' && c.code !== UNCATEGORIZED_CODE)
 
   useEffect(() => {
     if (!open) return
@@ -49,7 +52,7 @@ export function ReportItemFormDialog({ open, onOpenChange, request, item, onSave
       item
         ? {
             date: item.date,
-            category_id: String(item.category_id),
+            category_id: item.uncategorized ? '' : String(item.category_id),
             description: item.description,
             qty: String(item.qty),
             unit: item.unit ?? '',
@@ -60,12 +63,14 @@ export function ReportItemFormDialog({ open, onOpenChange, request, item, onSave
   }, [open, item, reset])
 
   const mutation = useMutation({
-    mutationFn: async (v: z.output<typeof schema>) =>
-      (
+    mutationFn: async (values: z.output<typeof schema>) => {
+      const v = { ...values, category_id: values.category_id || null }
+      return (
         await (item
           ? api.put<{ data: FundRequest }>(`/fund-report-items/${item.id}`, v)
           : api.post<{ data: FundRequest }>(`/fund-requests/${request.id}/report/items`, v))
-      ).data.data,
+      ).data.data
+    },
     onSuccess: (fresh) => {
       toast.success(item ? 'Nota diperbarui' : 'Nota ditambahkan. Lampirkan foto nota di tabel LPJ.')
       onSaved(fresh)
@@ -89,7 +94,7 @@ export function ReportItemFormDialog({ open, onOpenChange, request, item, onSave
           <FormField label="Tanggal nota" htmlFor="ri-date" error={errors.date?.message}>
             <Input id="ri-date" type="date" {...register('date')} />
           </FormField>
-          <FormField label="Kategori" error={errors.category_id?.message}>
+          <FormField label="Kategori (opsional — bisa diisi bendahara)" error={errors.category_id?.message}>
             <Controller
               control={control}
               name="category_id"
@@ -98,7 +103,7 @@ export function ReportItemFormDialog({ open, onOpenChange, request, item, onSave
                   value={field.value ?? ''}
                   onChange={field.onChange}
                   invalid={!!errors.category_id}
-                  placeholder="Ketik kategori..."
+                  placeholder="Kosongkan bila belum tahu"
                   emptyText="Kategori tidak ditemukan"
                   options={operational.map((c) => ({ value: String(c.id), label: `${c.code} · ${c.name}` }))}
                 />
