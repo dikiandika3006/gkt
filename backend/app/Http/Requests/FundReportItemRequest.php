@@ -13,7 +13,8 @@ class FundReportItemRequest extends FormRequest
     {
         return [
             'date' => ['required', 'date'],
-            'category_id' => ['required', Rule::exists('categories', 'id')
+            // Boleh kosong: nota masuk kategori sementara "Belum Dikategorikan" sampai diisi bendahara.
+            'category_id' => ['nullable', Rule::exists('categories', 'id')
                 ->where('is_active', true)
                 ->where('nature', 'operational')
                 ->whereIn('type', [CategoryType::Expense->value, CategoryType::Both->value])],

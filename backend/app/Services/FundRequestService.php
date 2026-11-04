@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\CategoryNature;
+use App\Enums\CategoryType;
 use App\Enums\TransactionType;
+use App\Models\Category;
 use App\Models\FundReport;
 use App\Models\FundReportItem;
 use App\Models\FundRequest;
@@ -15,7 +18,22 @@ use Illuminate\Support\Facades\DB;
  */
 class FundRequestService
 {
+    /** Kode kategori sementara untuk nota LPJ yang kategorinya belum diisi bendahara. */
+    public const UNCATEGORIZED = 'LPJ-BELUM';
+
     public function __construct(private TransferService $transfers) {}
+
+    public static function uncategorizedCategory(): Category
+    {
+        return Category::firstOrCreate(['code' => self::UNCATEGORIZED], [
+            'name' => 'Belum Dikategorikan',
+            'group' => 'Pengeluaran',
+            'type' => CategoryType::Expense,
+            'nature' => CategoryNature::Operational,
+            'description' => 'Nota LPJ yang kategorinya belum diisi bendahara.',
+            'is_active' => true,
+        ]);
+    }
 
     public function load(FundRequest $request): FundRequest
     {
@@ -99,7 +117,9 @@ class FundRequestService
         return DB::transaction(function () use ($request, $data, $userId, $item) {
             $report = $this->report($request, $userId);
             $amount = round((float) $data['qty'] * (float) $data['unit_price'], 2);
-            $fields = [...$data, 'amount' => $amount];
+            // Kategori boleh dikosongkan sekretariat; bendahara mengisinya nanti.
+            $categoryId = ($data['category_id'] ?? null) ?: self::uncategorizedCategory()->id;
+            $fields = [...$data, 'category_id' => $categoryId, 'amount' => $amount];
 
             $item ? $item->update($fields) : $item = $report->items()->create($fields);
 

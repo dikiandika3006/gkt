@@ -1,0 +1,1 @@
+var e=e=>e<0?`text-destructive`:``,t=`LPJ-BELUM`;export{e as n,t};
