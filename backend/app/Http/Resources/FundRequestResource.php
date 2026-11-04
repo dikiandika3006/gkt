@@ -25,11 +25,14 @@ class FundRequestResource extends JsonResource
                 'amount' => (float) $i->amount,
             ])),
             'transfers' => $this->whenLoaded('transfers', fn () => $this->transfers->map(fn ($t) => [
+                // id = transaksi sisi masuk (kas sekretariat), dipakai untuk lampiran bukti transfer.
+                'id' => $t->id,
                 'transfer_group' => $t->transfer_group,
                 'number' => $t->number,
                 'date' => $t->date->toDateString(),
                 'amount' => (float) $t->amount,
                 'description' => $t->description,
+                'attachments' => $t->relationLoaded('attachments') ? AttachmentResource::collection($t->attachments) : [],
             ])),
             'report' => $this->whenLoaded('report', fn () => $this->report ? [
                 'id' => $this->report->id,

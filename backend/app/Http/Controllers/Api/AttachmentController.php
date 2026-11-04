@@ -36,11 +36,11 @@ class AttachmentController extends Controller
             'file.max' => 'Ukuran file maksimal 5 MB.',
         ]);
 
-        [$class, $module] = self::TYPES[$data['attachable_type']];
-        abort_unless($request->user()->hasPermission($module, PermissionLevel::Manage), 403, 'Anda tidak memiliki akses untuk aksi ini.');
-
+        [$class] = self::TYPES[$data['attachable_type']];
         /** @var Model $parent */
         $parent = $class::findOrFail($data['attachable_id']);
+        abort_unless($this->allowedOn($request, $parent::class, $parent, PermissionLevel::Manage), 403, 'Anda tidak memiliki akses untuk aksi ini.');
+
         $file = $request->file('file');
 
         $attachment = $parent->attachments()->create([
@@ -71,11 +71,29 @@ class AttachmentController extends Controller
         return response()->json(['message' => 'Lampiran dihapus.']);
     }
 
-    /** Hak atas lampiran mengikuti modul induknya; jenis tak dikenal hanya untuk admin. */
     private function allowed(Request $request, Attachment $attachment, PermissionLevel $level): bool
     {
-        $module = collect(self::TYPES)->firstWhere(0, $attachment->attachable_type)[1] ?? null;
+        return $this->allowedOn($request, $attachment->attachable_type, $attachment->attachable, $level);
+    }
 
-        return $module ? $request->user()->hasPermission($module, $level) : $request->user()->hasRole(UserRole::Admin);
+    /**
+     * Hak atas lampiran mengikuti modul induknya; jenis tak dikenal hanya untuk admin.
+     * Bukti transfer pengajuan dana (transaksi dengan fund_request_id) juga boleh DILIHAT
+     * oleh pemegang hak Kas Sekretariat; mengunggah/menghapus tetap butuh Kelola Mutasi.
+     */
+    private function allowedOn(Request $request, string $class, ?Model $parent, PermissionLevel $level): bool
+    {
+        $user = $request->user();
+        $module = collect(self::TYPES)->firstWhere(0, $class)[1] ?? null;
+
+        if (! $module) {
+            return $user->hasRole(UserRole::Admin);
+        }
+
+        if ($level === PermissionLevel::View && $parent instanceof Transaction && $parent->fund_request_id) {
+            return $user->hasPermission(Module::Transactions) || $user->hasPermission(Module::FundRequests);
+        }
+
+        return $user->hasPermission($module, $level);
     }
 }

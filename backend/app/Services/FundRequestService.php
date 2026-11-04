@@ -21,7 +21,7 @@ class FundRequestService
     {
         return $request->load([
             'cashAccount', 'creator:id,name', 'items',
-            'transfers', 'report.items.category', 'report.items.attachments', 'report.items.transaction:id,fund_report_item_id,number',
+            'transfers.attachments', 'report.items.category', 'report.items.attachments', 'report.items.transaction:id,fund_report_item_id,number',
         ]);
     }
 
