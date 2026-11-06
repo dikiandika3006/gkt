@@ -20,7 +20,7 @@ use RuntimeException;
  */
 class SpreadsheetMutationParser
 {
-    public const ROLES = ['date', 'description', 'debit', 'credit', 'amount', 'direction', 'balance', 'pocket', 'name'];
+    public const ROLES = ['date', 'description', 'debit', 'credit', 'amount', 'direction', 'balance', 'pocket', 'name', 'category', 'cash_account'];
 
     /** Sinonim judul kolom (huruf kecil, tanpa tanda baca). */
     private const SYNONYMS = [
@@ -33,6 +33,8 @@ class SpreadsheetMutationParser
         'balance' => ['saldo', 'balance', 'saldo akhir'],
         'pocket' => ['pocket', 'group mutasi', 'group', 'kantong', 'pos dana'],
         'name' => ['nama', 'name', 'penerima', 'pengirim', 'nama pengirim', 'nama penerima'],
+        'category' => ['kategori', 'category'],
+        'cash_account' => ['kas', 'kas rekening', 'kas bank'],
     ];
 
     private const MONTHS = [
@@ -273,6 +275,12 @@ class SpreadsheetMutationParser
 
             $description = trim((string) $cell($row, 'description'));
             $pocket = trim((string) $cell($row, 'pocket')) ?: null;
+            $cashAccount = trim((string) $cell($row, 'cash_account')) ?: null;
+            // File export Mutasi lama: kolom Kas berisi "Nama kas · Nama pocket".
+            if ($cashAccount !== null && str_contains($cashAccount, ' · ')) {
+                [$cashAccount, $fromKas] = array_map('trim', explode(' · ', $cashAccount, 2));
+                $pocket ??= $fromKas ?: null;
+            }
             $debit = $this->number($cell($row, 'debit'));
             $credit = $this->number($cell($row, 'credit'));
             $balance = $this->number($cell($row, 'balance'));
@@ -308,6 +316,8 @@ class SpreadsheetMutationParser
                 'description' => $description,
                 'name' => trim((string) $cell($row, 'name')),
                 'pocket' => $pocket,
+                'category' => trim((string) $cell($row, 'category')) ?: null,
+                'cash_account' => $cashAccount,
                 'debit' => $debit,
                 'credit' => $credit,
                 'amount' => $amount,
@@ -381,7 +391,7 @@ class SpreadsheetMutationParser
         return $book > $bank ? 'book' : 'bank';
     }
 
-    /** @return list<array{key: string, date: string, type: string, amount: float, balance: ?float, description: string, remark: string, name: string, pocket: ?string}> */
+    /** @return list<array{key: string, date: string, type: string, amount: float, balance: ?float, description: string, remark: string, name: string, pocket: ?string, category: ?string, cash_account: ?string}> */
     private function rows(array $entries, string $direction, ?string $account): array
     {
         $rows = [];
@@ -422,6 +432,8 @@ class SpreadsheetMutationParser
                     'remark' => $remark,
                     'name' => $e['name'] !== '' ? $e['name'] : $name,
                     'pocket' => $e['pocket'],
+                    'category' => $e['category'],
+                    'cash_account' => $e['cash_account'],
                 ];
             }
         }
