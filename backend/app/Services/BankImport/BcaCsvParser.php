@@ -83,7 +83,7 @@ class BcaCsvParser
      *
      * @return array{0: string, 1: string} [berita, nama]
      */
-    private function splitDescription(string $description): array
+    public function splitDescription(string $description): array
     {
         $parts = array_values(array_filter(preg_split('/\s{2,}/', trim($description)), fn ($p) => $p !== ''));
 

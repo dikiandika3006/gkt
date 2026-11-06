@@ -123,6 +123,7 @@ return array(
     'App\\Services\\AppSettingService' => $baseDir . '/app/Services/AppSettingService.php',
     'App\\Services\\BankImport\\BankImportService' => $baseDir . '/app/Services/BankImport/BankImportService.php',
     'App\\Services\\BankImport\\BcaCsvParser' => $baseDir . '/app/Services/BankImport/BcaCsvParser.php',
+    'App\\Services\\BankImport\\SpreadsheetMutationParser' => $baseDir . '/app/Services/BankImport/SpreadsheetMutationParser.php',
     'App\\Services\\BudgetService' => $baseDir . '/app/Services/BudgetService.php',
     'App\\Services\\CashAccountService' => $baseDir . '/app/Services/CashAccountService.php',
     'App\\Services\\CategoryCodeGenerator' => $baseDir . '/app/Services/CategoryCodeGenerator.php',

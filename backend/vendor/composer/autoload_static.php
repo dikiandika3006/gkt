@@ -640,6 +640,7 @@ class ComposerStaticInit34f13c942ff727d6f3abba16cf3f2274
         'App\\Services\\AppSettingService' => __DIR__ . '/../..' . '/app/Services/AppSettingService.php',
         'App\\Services\\BankImport\\BankImportService' => __DIR__ . '/../..' . '/app/Services/BankImport/BankImportService.php',
         'App\\Services\\BankImport\\BcaCsvParser' => __DIR__ . '/../..' . '/app/Services/BankImport/BcaCsvParser.php',
+        'App\\Services\\BankImport\\SpreadsheetMutationParser' => __DIR__ . '/../..' . '/app/Services/BankImport/SpreadsheetMutationParser.php',
         'App\\Services\\BudgetService' => __DIR__ . '/../..' . '/app/Services/BudgetService.php',
         'App\\Services\\CashAccountService' => __DIR__ . '/../..' . '/app/Services/CashAccountService.php',
         'App\\Services\\CategoryCodeGenerator' => __DIR__ . '/../..' . '/app/Services/CategoryCodeGenerator.php',

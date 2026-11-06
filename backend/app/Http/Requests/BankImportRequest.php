@@ -20,6 +20,8 @@ class BankImportRequest extends FormRequest
             'rows.*.type' => ['required', Rule::enum(TransactionType::class)],
             'rows.*.amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
             'rows.*.description' => ['required', 'string', 'max:500'],
+            'rows.*.pocket_id' => ['nullable', 'integer'],
+            'confirm_negative' => ['boolean'],
             'rows.*.lines' => ['required', 'array', 'min:1', 'max:20'],
             'rows.*.lines.*.category_id' => ['required', 'integer'],
             'rows.*.lines.*.amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
