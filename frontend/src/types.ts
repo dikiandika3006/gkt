@@ -151,9 +151,26 @@ export interface BankImportRow {
   description: string
   remark: string
   name: string
+  /** Nama pocket dari kolom file (bila ada). */
+  pocket: string | null
+  /** Pocket yang disarankan; null = dipilih user saat konfirmasi. */
+  pocket_id: number | null
   status: BankImportStatus
   status_reason: string | null
   lines: BankImportLine[]
+}
+
+export type ImportColumnRole = 'date' | 'description' | 'debit' | 'credit' | 'amount' | 'direction' | 'balance' | 'pocket' | 'name'
+
+export interface ImportDetection {
+  sheet: string
+  sheets: string[]
+  header_row: number
+  columns: { index: number; letter: string; header: string; samples: string[] }[]
+  mapping: Record<ImportColumnRole, number | null>
+  /** bank = Debet keluar / Kredit masuk; book = Debit masuk / Kredit keluar. */
+  direction: 'bank' | 'book'
+  direction_detected: 'bank' | 'book'
 }
 
 export interface BankImportPreview {
@@ -161,9 +178,14 @@ export interface BankImportPreview {
   account_name: string | null
   period: string | null
   cash_account_id: number | null
+  has_pockets: boolean
+  pockets: { id: number; name: string; is_active: boolean; current_balance: number }[]
   last_manual_date: string | null
+  openings: { pocket: string | null; amount: number }[]
+  /** null untuk CSV KlikBCA (format tetap). */
+  detection: ImportDetection | null
   summary: {
-    bank_opening: number
+    bank_opening: number | null
     bank_closing: number | null
     app_opening: number | null
     opening_difference: number | null

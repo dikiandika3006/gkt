@@ -99,7 +99,7 @@ export default function TransactionsPage() {
             {canWrite && (
             <>
               <Button variant="outline" render={<Link to="/transactions/import" />}>
-                <Upload /> Import CSV
+                <Upload /> Import Mutasi
               </Button>
               <Button
                 variant="outline"

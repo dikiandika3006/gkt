@@ -212,12 +212,17 @@ class BankImportTest extends TestCase
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
 
-    public function test_invalid_file_returns_friendly_error(): void
+    public function test_unrecognized_file_returns_columns_for_manual_mapping(): void
     {
         $file = UploadedFile::fake()->createWithContent('lain.csv', "nama,jumlah\nabc,100\n");
 
         $this->postJson('/api/transactions/import/preview', ['file' => $file])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'Format file tidak dikenali. Gunakan CSV mutasi rekening dari KlikBCA Bisnis.');
+            ->assertOk()
+            ->assertJsonCount(0, 'rows')
+            ->assertJsonPath('detection.columns.0.header', 'nama')
+            ->assertJsonPath('detection.mapping.amount', 1);
+
+        $this->postJson('/api/transactions/import/preview', ['file' => UploadedFile::fake()->create('foto.jpg', 10)])
+            ->assertUnprocessable()->assertJsonValidationErrors('file');
     }
 }
