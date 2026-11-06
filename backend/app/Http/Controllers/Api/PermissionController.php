@@ -19,7 +19,7 @@ class PermissionController extends Controller
 
     public function update(PermissionRequest $request): JsonResponse
     {
-        $this->permissions->save($request->validated('permissions'));
+        $this->permissions->save($request->validated('permissions'), $request->validated('cash_accounts'));
 
         return response()->json([
             'message' => 'Hak akses disimpan.',

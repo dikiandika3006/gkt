@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage, fieldErrors } from '@/lib/api'
 import { toDateInput } from '@/lib/format'
-import { useCashAccounts, useCategories, useCounterparties, useRecurringExpenses } from '@/lib/queries'
+import { useAccessibleCashAccounts, useCategories, useCounterparties, useRecurringExpenses } from '@/lib/queries'
 import type { Transaction } from '@/types'
 
 const NONE = '__none'
@@ -59,7 +59,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
   const counterparty = watch('counterparty') ?? ''
   const recurringId = watch('recurring_expense_id')
   const { data: categories = [] } = useCategories({ type, activeOnly: true, excludeTransfer: true })
-  const { data: cashAccounts = [] } = useCashAccounts({ activeOnly: true })
+  const { data: cashAccounts = [] } = useAccessibleCashAccounts({ activeOnly: true })
   const { data: recurring = [] } = useRecurringExpenses()
   const { data: names = [] } = useCounterparties(counterparty.length >= 2 ? counterparty : '')
 

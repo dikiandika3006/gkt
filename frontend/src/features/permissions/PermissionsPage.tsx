@@ -9,11 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PageHeader } from '@/components/PageHeader'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage } from '@/lib/api'
+import { useCashAccounts } from '@/lib/queries'
 import type { Module, PermissionLevel, PermissionMatrix } from '@/types'
 
 const LEVEL_LABEL: Record<PermissionLevel, string> = { none: 'Tidak ada', view: 'Lihat', manage: 'Kelola' }
 
 type Draft = Record<string, Record<Module, PermissionLevel>>
+type CashDraft = Record<string, number[] | null>
 
 /** Menu Hak Akses (admin): atur Tidak ada / Lihat / Kelola per role × modul. Admin selalu penuh. */
 export default function PermissionsPage() {
@@ -27,17 +29,31 @@ export default function PermissionsPage() {
   const draft: Draft = edits ?? ((data?.permissions ?? {}) as Draft)
   const setDraft = (fn: (d: Draft) => Draft) => setEdits(fn(draft))
 
+  // Akses kas di Mutasi: role => daftar kas, null = semua kas (termasuk kas baru).
+  const { data: cashAccounts = [] } = useCashAccounts()
+  const [cashEdits, setCashEdits] = useState<CashDraft | null>(null)
+  const cashDraft: CashDraft = cashEdits ?? data?.cash_accounts ?? {}
+  const allIds = cashAccounts.map((c) => c.id)
+  const toggleCash = (role: string, id: number, checked: boolean) => {
+    const current = cashDraft[role] ?? allIds
+    const next = checked ? [...new Set([...current, id])] : current.filter((x) => x !== id)
+    setCashEdits({ ...cashDraft, [role]: allIds.every((x) => next.includes(x)) ? null : next.sort((a, b) => a - b) })
+  }
+
   const save = useMutation({
-    mutationFn: async () => (await api.put<PermissionMatrix & { message: string }>('/permissions', { permissions: draft })).data,
+    mutationFn: async () =>
+      (await api.put<PermissionMatrix & { message: string }>('/permissions', { permissions: draft, cash_accounts: cashDraft })).data,
     onSuccess: (res) => {
       toast.success(res.message)
       queryClient.setQueryData(['permissions'], res)
       setEdits(null)
+      setCashEdits(null)
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
 
-  const dirty = !!data && JSON.stringify(draft) !== JSON.stringify(data.permissions)
+  const dirty =
+    !!data && (JSON.stringify(draft) !== JSON.stringify(data.permissions) || JSON.stringify(cashDraft) !== JSON.stringify(data.cash_accounts))
 
   const resetDefaults = () => {
     if (!data) return
@@ -46,6 +62,7 @@ export default function PermissionsPage() {
       next[role.value] = Object.fromEntries(data.modules.map((m) => [m.key, m.defaults[role.value]])) as Record<Module, PermissionLevel>
     }
     setEdits(next)
+    setCashEdits(Object.fromEntries(data.roles.map((r) => [r.value, null])))
   }
 
   return (
@@ -104,6 +121,63 @@ export default function PermissionsPage() {
                     />
                   </TableCell>
                 ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Card className="gap-0 py-0">
+        <div className="border-b p-4">
+          <h2 className="font-semibold">Akses Kas di Mutasi</h2>
+          <p className="text-sm text-muted-foreground">
+            Kas/rekening yang boleh dilihat & dipakai tiap role di menu Mutasi (termasuk Import CSV dan Mutasi Antar Kas). Semua dicentang = semua kas,
+            termasuk kas baru. Dashboard & Laporan tidak terpengaruh.
+          </p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="pl-4">Kas / Rekening</TableHead>
+              <TableHead>Administrator</TableHead>
+              {data?.roles.map((r) => (
+                <TableHead key={r.value} className="min-w-36">
+                  {r.label}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cashAccounts.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="pl-4">
+                  <div className="font-medium">{c.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.type_label}
+                    {!c.is_active && ' · nonaktif'}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">Semua</Badge>
+                </TableCell>
+                {data?.roles.map((r) => {
+                  const ids = cashDraft[r.value]
+                  const checked = ids === null || ids === undefined || ids.includes(c.id)
+                  // Minimal satu kas per role.
+                  const onlyOne = checked && (ids?.length === 1 || allIds.length === 1)
+                  return (
+                    <TableCell key={r.value}>
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        aria-label={`${r.label} boleh memakai ${c.name}`}
+                        checked={checked}
+                        disabled={onlyOne}
+                        onChange={(e) => toggleCash(r.value, c.id, e.target.checked)}
+                      />
+                    </TableCell>
+                  )
+                })}
               </TableRow>
             ))}
           </TableBody>

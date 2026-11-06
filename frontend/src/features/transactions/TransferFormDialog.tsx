@@ -12,7 +12,7 @@ import { FormField } from '@/components/FormField'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage, fieldErrors } from '@/lib/api'
 import { toDateInput } from '@/lib/format'
-import { useCashAccounts } from '@/lib/queries'
+import { useAccessibleCashAccounts } from '@/lib/queries'
 import type { Transaction } from '@/types'
 
 const schema = z
@@ -38,7 +38,7 @@ interface Props {
 /** Mutasi antar kas: tidak dihitung sebagai pemasukan/pengeluaran gereja. */
 export function TransferFormDialog({ open, onOpenChange, leg }: Props) {
   const queryClient = useQueryClient()
-  const { data: cashAccounts = [] } = useCashAccounts({ activeOnly: true })
+  const { data: cashAccounts = [] } = useAccessibleCashAccounts({ activeOnly: true })
   const { register, control, handleSubmit, reset, setError, formState } = useForm<FormValues, unknown, z.output<typeof schema>>({
     resolver: zodResolver(schema),
   })

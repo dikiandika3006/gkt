@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage } from '@/lib/api'
 import { formatDate, formatRupiah } from '@/lib/format'
-import { useCashAccounts, useCategories, useCounterparties, useRecurringExpenses } from '@/lib/queries'
+import { useAccessibleCashAccounts, useCategories, useCounterparties, useRecurringExpenses } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 import type { BankImportPreview, BankImportRow, BankImportStatus, Category } from '@/types'
 
@@ -74,7 +74,7 @@ export default function BankImportPage() {
   const [rows, setRows] = useState<EditRow[]>([])
   const [view, setView] = useState<ViewFilter>('all')
 
-  const { data: cashAccounts = [] } = useCashAccounts({ activeOnly: true })
+  const { data: cashAccounts = [] } = useAccessibleCashAccounts({ activeOnly: true })
   const { data: categories = [] } = useCategories({ activeOnly: true, excludeTransfer: true })
   const { data: recurring = [] } = useRecurringExpenses()
   const { data: names = [] } = useCounterparties('')

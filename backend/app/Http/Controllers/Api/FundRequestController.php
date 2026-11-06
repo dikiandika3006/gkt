@@ -10,8 +10,10 @@ use App\Http\Resources\FundRequestResource;
 use App\Models\CashAccount;
 use App\Models\FundReportItem;
 use App\Models\FundRequest;
+use App\Rules\AccessibleCashAccount;
 use App\Services\FinanceReportService;
 use App\Services\FundRequestService;
+use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -113,12 +115,14 @@ class FundRequestController extends Controller
     {
         $data = $request->validate([
             'date' => ['required', 'date'],
-            'from_cash_account_id' => ['required', 'integer', Rule::exists('cash_accounts', 'id')->where('is_active', true)],
+            'from_cash_account_id' => ['required', 'integer', Rule::exists('cash_accounts', 'id')->where('is_active', true), new AccessibleCashAccount],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
             'description' => ['nullable', 'string', 'max:255'],
             'reference' => ['nullable', 'string', 'max:100'],
         ]);
 
+        // Transfer = mutasi antar kas: kas tujuan (kas pengajuan) juga harus dalam akses kas user.
+        app(PermissionService::class)->ensureCashAccess($request->user(), [$fundRequest->cash_account_id]);
         $this->service->addTransfer($fundRequest->load('cashAccount'), $data, $request->user()->id);
 
         return new FundRequestResource($this->service->load($fundRequest));

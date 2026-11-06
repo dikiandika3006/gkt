@@ -8,6 +8,7 @@ use App\Http\Requests\TransactionRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\ExcelExportService;
+use App\Services\PermissionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,13 +17,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/** Mutasi kas. Dibatasi ke akses kas role user (menu Hak Akses → Akses Kas di Mutasi). */
 class TransactionController extends Controller
 {
+    public function __construct(private PermissionService $permissions) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $filters = $this->validateFilters($request);
 
-        $transactions = $this->filteredQuery($filters)
+        $transactions = $this->scopedQuery($request, $filters)
             ->with(['category', 'cashAccount', 'creator:id,name'])
             ->withCount('attachments')
             ->orderByDesc('date')
@@ -37,7 +41,7 @@ class TransactionController extends Controller
     {
         $filters = $this->validateFilters($request);
 
-        $rows = $this->filteredQuery($filters)
+        $rows = $this->scopedQuery($request, $filters)
             ->with(['category:id,name,group', 'cashAccount:id,name'])
             ->orderBy('date')
             ->orderBy('id')
@@ -84,6 +88,16 @@ class TransactionController extends Controller
         ]);
     }
 
+    /** Batasi ke akses kas user: filter kas di luar akses → 403; tanpa filter → hanya kas yang boleh. */
+    private function scopedQuery(Request $request, array $filters): Builder
+    {
+        $user = $request->user();
+        $this->permissions->ensureCashAccess($user, [$filters['cash_account_id'] ?? null]);
+        $allowed = $this->permissions->cashAccountIdsFor($user);
+
+        return $this->filteredQuery($filters)->when($allowed !== null, fn ($q) => $q->whereIn('cash_account_id', $allowed));
+    }
+
     private function filteredQuery(array $filters): Builder
     {
         return Transaction::query()
@@ -117,20 +131,26 @@ class TransactionController extends Controller
         return new TransactionResource($transaction->load(['category', 'cashAccount', 'creator:id,name']));
     }
 
-    public function show(Transaction $transaction): TransactionResource
+    public function show(Request $request, Transaction $transaction): TransactionResource
     {
+        $this->permissions->ensureCashAccess($request->user(), [$transaction->cash_account_id]);
+
         return new TransactionResource($transaction->load(['category', 'cashAccount', 'creator:id,name', 'attachments']));
     }
 
     public function update(TransactionRequest $request, Transaction $transaction): TransactionResource
     {
+        // Kas baru dicek di TransactionRequest; kas lama juga harus dalam akses.
+        $this->permissions->ensureCashAccess($request->user(), [$transaction->cash_account_id]);
         $transaction->update($request->validated());
 
         return new TransactionResource($transaction->load(['category', 'cashAccount', 'creator:id,name']));
     }
 
-    public function destroy(Transaction $transaction): JsonResponse
+    public function destroy(Request $request, Transaction $transaction): JsonResponse
     {
+        $this->permissions->ensureCashAccess($request->user(), [$transaction->cash_account_id]);
+
         if ($transaction->isManaged()) {
             abort(422, 'Transaksi ini dikelola dari modul Mutasi Antar Kas / LPJ. Hapus dari sana.');
         }

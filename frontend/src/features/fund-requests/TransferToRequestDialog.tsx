@@ -12,7 +12,7 @@ import { FormField } from '@/components/FormField'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage, fieldErrors } from '@/lib/api'
 import { formatRupiah, toDateInput } from '@/lib/format'
-import { useCashAccounts } from '@/lib/queries'
+import { useAccessibleCashAccounts } from '@/lib/queries'
 import type { FundRequest } from '@/types'
 
 const schema = z.object({
@@ -32,7 +32,7 @@ interface Props {
 
 /** Bendahara mencatat transfer dana untuk pengajuan (mutasi antar kas ke kas pengajuan). */
 export function TransferToRequestDialog({ open, onOpenChange, request, onSaved }: Props) {
-  const { data: cashAccounts = [] } = useCashAccounts({ activeOnly: true })
+  const { data: cashAccounts = [] } = useAccessibleCashAccounts({ activeOnly: true })
   const { register, control, handleSubmit, reset, setError, formState } = useForm<FormValues, unknown, z.output<typeof schema>>({
     resolver: zodResolver(schema),
   })

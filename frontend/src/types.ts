@@ -14,6 +14,10 @@ export interface User {
   is_active: boolean
   /** Hak akses per modul (menu Hak Akses). */
   permissions: Record<Module, PermissionLevel>
+  /** Kas yang boleh dipakai di Mutasi; null = semua kas. */
+  cash_account_ids: number[] | null
+  /** Kas awal halaman Mutasi (Setting + akses kas). */
+  default_cash_account_id: number | null
   created_at: string
 }
 
@@ -34,6 +38,8 @@ export interface PermissionMatrix {
   roles: { value: Exclude<Role, 'admin'>; label: string }[]
   modules: { key: Module; label: string; description: string; levels: PermissionLevel[]; defaults: Record<string, PermissionLevel> }[]
   permissions: Record<string, Record<Module, PermissionLevel>>
+  /** Akses kas di Mutasi per role; null = semua kas. */
+  cash_accounts: Record<string, number[] | null>
 }
 
 export interface FundAccountSummary {
@@ -503,4 +509,8 @@ export interface OfferingSettings {
 export interface AppSettings {
   /** null = semua kas & bank tampil di kartu saldo dashboard. */
   dashboard_cash_account_id: number | null
+  /** Kas awal halaman Mutasi, mis. Rekening Utama. */
+  mutation_cash_account_id: number | null
+  /** Kas awal Mutasi bila user tidak punya akses ke kas default, mis. Kas Sekretariat. */
+  mutation_fallback_cash_account_id: number | null
 }

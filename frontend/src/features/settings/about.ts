@@ -14,6 +14,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-07',
+    title: 'Mutasi per kas & Akses Kas',
+    changes: [
+      'Halaman Mutasi: Kas / Rekening dipilih di bagian atas dan wajib (tidak ada lagi "Semua kas"); filter lain dirapikan menjadi satu baris.',
+      'Hak Akses → Akses Kas di Mutasi: atur kas yang boleh dilihat & dipakai tiap role (mis. Sekretariat hanya Kas Sekretariat).',
+      'Setting → Mutasi: kas default (mis. Rekening Utama) dan kas default bila tidak punya akses (mis. Kas Sekretariat).',
+      'Transaksi baru otomatis memakai kas yang sedang dipilih.',
+    ],
+  },
+  {
     date: '2026-11-06',
     title: 'Menu Setting & About',
     changes: [
@@ -93,6 +103,8 @@ export const RULES: Record<string, string[]> = {
     'Kode kategori dibuat otomatis dan terkunci setelah disimpan.',
   ],
   'Mutasi & Mutasi antar Kas': [
+    'Halaman Mutasi selalu menampilkan satu kas yang dipilih. Kas awal = kas default di Setting bila boleh diakses, jika tidak kas cadangan, jika tidak kas pertama yang boleh.',
+    'Setiap role hanya bisa melihat, mencatat, mengubah, menghapus, mengimpor, dan mengekspor transaksi pada kas yang diizinkan di Hak Akses → Akses Kas. Mutasi antar kas butuh akses ke kedua kas.',
     'Mutasi antar kas tercatat sebagai dua transaksi berpasangan (keluar dari kas asal, masuk ke kas tujuan) yang diubah/dihapus bersamaan.',
     'Import mutasi bank (CSV) dan Data Mutasi Excel lama diperiksa dulu sebelum disimpan; kategori disarankan dari riwayat, biaya rutin, lalu kata kunci.',
   ],
@@ -115,6 +127,7 @@ export const RULES: Record<string, string[]> = {
   ],
   'Hak Akses & Audit': [
     'Role: Administrator, Bendahara, Sekretariat, Viewer. Hak tiap role per modul diatur di menu Hak Akses; Administrator selalu penuh.',
+    'Akses kas di Mutasi diatur per role; tanpa pengaturan = semua kas. Administrator selalu semua kas.',
     'Pengguna, Log Aktivitas, Hak Akses, Setting, dan About khusus Administrator.',
     'Setiap tambah/ubah/hapus data keuangan dan setting tercatat di Log Aktivitas.',
   ],

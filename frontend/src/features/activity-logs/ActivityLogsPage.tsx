@@ -20,6 +20,7 @@ const SUBJECTS = [
   { value: 'Category', label: 'Kategori' },
   { value: 'CashAccount', label: 'Kas & Bank' },
   { value: 'AppSetting', label: 'Setting' },
+  { value: 'RoleCashAccount', label: 'Akses Kas' },
 ]
 const ACTION: Record<ActivityLog['action'], { label: string; variant: 'secondary' | 'outline' | 'destructive' }> = {
   created: { label: 'Dibuat', variant: 'secondary' },

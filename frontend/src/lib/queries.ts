@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/features/auth/AuthContext'
 import { api } from '@/lib/api'
 import type { CashAccount, Category, FundAccountSummary, RecurringExpense, TransactionType } from '@/types'
 
@@ -25,6 +26,15 @@ export function useCashAccounts(params: { activeOnly?: boolean } = {}) {
       (await api.get<{ data: CashAccount[] }>('/cash-accounts', { params: { active_only: params.activeOnly ? 1 : undefined } })).data
         .data,
   })
+}
+
+/** Kas yang boleh dipakai user di modul Mutasi (menu Hak Akses → Akses Kas). */
+export function useAccessibleCashAccounts(params: { activeOnly?: boolean } = {}) {
+  const { user } = useAuth()
+  const query = useCashAccounts(params)
+  const allowed = user?.cash_account_ids ?? null
+  const data = allowed === null ? query.data : query.data?.filter((c) => allowed.includes(c.id))
+  return { ...query, data }
 }
 
 export function useRecurringExpenses() {

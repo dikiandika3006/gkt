@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Link } from 'react-router'
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
@@ -16,7 +17,7 @@ import { SelectField } from '@/components/SelectField'
 import { useAuth } from '@/features/auth/AuthContext'
 import { api, downloadFile, errorMessage } from '@/lib/api'
 import { formatDate, formatRupiah } from '@/lib/format'
-import { useCashAccounts, useCategories } from '@/lib/queries'
+import { useAccessibleCashAccounts, useCategories } from '@/lib/queries'
 import type { Paginated, Transaction } from '@/types'
 import { TransactionFormDialog } from './TransactionFormDialog'
 import { TransferFormDialog } from './TransferFormDialog'
@@ -24,9 +25,12 @@ import { TransferFormDialog } from './TransferFormDialog'
 const ALL = '__all'
 
 export default function TransactionsPage() {
-  const canWrite = useAuth().can('transactions', 'manage')
+  const { user, can } = useAuth()
+  const canWrite = can('transactions', 'manage')
   const queryClient = useQueryClient()
-  const [filters, setFilters] = useState({ start_date: '', end_date: '', type: '', category_id: '', cash_account_id: '', search: '' })
+  const [filters, setFilters] = useState({ start_date: '', end_date: '', type: '', category_id: '', search: '' })
+  // Kas wajib dipilih; awalnya kas default user (Setting + akses kas), lalu kas pertama yang boleh.
+  const [pickedAccount, setPickedAccount] = useState('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(15)
   const [formOpen, setFormOpen] = useState(false)
@@ -36,17 +40,18 @@ export default function TransactionsPage() {
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null)
 
   const { data: categories = [] } = useCategories()
-  const { data: cashAccounts = [] } = useCashAccounts()
+  const { data: cashAccounts = [], isLoading: accountsLoading } = useAccessibleCashAccounts()
+  const fallbackAccount = cashAccounts.find((c) => c.id === user?.default_cash_account_id) ?? cashAccounts.find((c) => c.is_active) ?? cashAccounts[0]
+  const cashAccountId = pickedAccount || (fallbackAccount ? String(fallbackAccount.id) : '')
+  // Transaksi baru otomatis memakai kas yang sedang dipilih. Di-memo agar form tidak ter-reset saat render ulang.
+  const newDraft = useMemo(() => (cashAccountId ? { cash_account_id: cashAccountId } : null), [cashAccountId])
+  const params = { ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '')), cash_account_id: cashAccountId }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', filters, page, perPage],
-    queryFn: async () =>
-      (
-        await api.get<Paginated<Transaction>>('/transactions', {
-          params: { ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '')), page, per_page: perPage },
-        })
-      ).data,
+    queryKey: ['transactions', params, page, perPage],
+    queryFn: async () => (await api.get<Paginated<Transaction>>('/transactions', { params: { ...params, page, per_page: perPage } })).data,
     placeholderData: keepPreviousData,
+    enabled: cashAccountId !== '',
   })
 
   const remove = useMutation({
@@ -66,7 +71,7 @@ export default function TransactionsPage() {
   const onExport = async () => {
     setExporting(true)
     try {
-      await downloadFile('/transactions/export', 'transaksi.xlsx', Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '')))
+      await downloadFile('/transactions/export', 'transaksi.xlsx', params)
     } catch (err) {
       toast.error(errorMessage(err))
     } finally {
@@ -86,7 +91,7 @@ export default function TransactionsPage() {
         description="Pencatatan pemasukan dan pengeluaran"
         actions={
           <>
-            <Button variant="outline" disabled={exporting} onClick={onExport}>
+            <Button variant="outline" disabled={exporting || !cashAccountId} onClick={onExport}>
               {exporting ? <Loader2 className="animate-spin" /> : <Download />} Export Excel
             </Button>
             {canWrite && (
@@ -117,9 +122,27 @@ export default function TransactionsPage() {
         }
       />
 
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+        <Label htmlFor="mutation-account" className="shrink-0">
+          Kas / Rekening <span className="text-destructive">*</span>
+        </Label>
+        <SelectField
+          id="mutation-account"
+          value={cashAccountId}
+          onChange={(v) => {
+            if (!v) return // wajib dipilih, tidak bisa dikosongkan
+            setPickedAccount(v)
+            setPage(1)
+          }}
+          placeholder={accountsLoading ? 'Memuat kas...' : 'Pilih kas / rekening'}
+          className="sm:w-80"
+          options={cashAccounts.map((c) => ({ value: String(c.id), label: c.is_active ? c.name : `${c.name} (nonaktif)` }))}
+        />
+      </div>
+
       <Card>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <Input placeholder="Cari keterangan / nama / nomor..." value={filters.search} onChange={(e) => setFilter('search', e.target.value)} className="lg:col-span-2" />
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_2fr]">
+          <Input placeholder="Cari keterangan / nama / nomor..." value={filters.search} onChange={(e) => setFilter('search', e.target.value)} className="sm:col-span-2 lg:col-span-1" />
           <Input type="date" value={filters.start_date} onChange={(e) => setFilter('start_date', e.target.value)} aria-label="Dari tanggal" />
           <Input type="date" value={filters.end_date} onChange={(e) => setFilter('end_date', e.target.value)} aria-label="Sampai tanggal" />
           <SelectField
@@ -132,17 +155,11 @@ export default function TransactionsPage() {
               { value: 'expense', label: 'Pengeluaran' },
             ]}
           />
-          <SelectField
-            value={filters.cash_account_id}
-            onChange={(v) => setFilter('cash_account_id', v)}
-            placeholder="Semua kas"
-            options={[{ value: ALL, label: 'Semua kas' }, ...cashAccounts.map((c) => ({ value: String(c.id), label: c.name }))]}
-          />
           <SearchableSelect
             value={filters.category_id}
             onChange={(v) => setFilter('category_id', v)}
             placeholder="Semua kategori (ketik untuk cari)"
-            className="lg:col-span-2"
+            className="sm:col-span-2 lg:col-span-1"
             clearable
             emptyText="Kategori tidak ditemukan"
             options={categories.map((c) => ({ value: String(c.id), label: `${c.code} · ${c.name}` }))}
@@ -168,6 +185,13 @@ export default function TransactionsPage() {
               <TableRow>
                 <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   Memuat...
+                </TableCell>
+              </TableRow>
+            )}
+            {!accountsLoading && cashAccounts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  Belum ada kas yang bisa Anda akses. Hubungi admin (menu Hak Akses).
                 </TableCell>
               </TableRow>
             )}
@@ -251,7 +275,7 @@ export default function TransactionsPage() {
         )}
       </Card>
 
-      <TransactionFormDialog open={formOpen} onOpenChange={setFormOpen} transaction={editing} />
+      <TransactionFormDialog open={formOpen} onOpenChange={setFormOpen} transaction={editing} draft={newDraft} />
       <TransferFormDialog open={transferOpen} onOpenChange={setTransferOpen} leg={editingTransfer} />
       <ConfirmDialog
         open={!!deleting}
