@@ -15,6 +15,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-11-07',
+    title: 'Backup & Restore database',
+    changes: [
+      'Form rahasia di About (Alt+F7, khusus admin, wajib PIN): buat & download backup database, riwayat backup, dan restore.',
+      'Restore dari riwayat atau upload file .sql/.sql.gz; backup pengaman "_pre-restore" dibuat otomatis sebelum restore.',
+      'Hanya database; lampiran (foto nota, bukti transfer) tidak ikut.',
+    ],
+  },
+  {
+    date: '2026-11-07',
     title: 'Mutasi per kas & Akses Kas',
     changes: [
       'Halaman Mutasi: Kas / Rekening dipilih di bagian atas dan wajib (tidak ada lagi "Semua kas"); filter lain dirapikan menjadi satu baris.',

@@ -1,13 +1,27 @@
+import { useEffect, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/PageHeader'
 import { formatDate } from '@/lib/format'
 import { APP_NAME, CHANGELOG, RULES } from './about'
+import { BackupDialog } from './BackupDialog'
 
 /** Setting → About: info aplikasi, aturan sistem, dan riwayat perubahan. */
 export default function AboutPage() {
   const latest = CHANGELOG[0]
+  // Form rahasia Backup & Restore: Alt+F7 (halaman ini khusus admin).
+  const [backupOpen, setBackupOpen] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === 'F7') {
+        e.preventDefault()
+        setBackupOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <>
@@ -68,6 +82,8 @@ export default function AboutPage() {
           </CardContent>
         </Card>
       </div>
+
+      <BackupDialog open={backupOpen} onOpenChange={setBackupOpen} />
     </>
   )
 }
