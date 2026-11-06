@@ -18,6 +18,7 @@ class CashAccountResource extends JsonResource
             'bank_name' => $this->bank_name,
             'account_number' => $this->account_number,
             'opening_balance' => (float) $this->opening_balance,
+            'current_balance' => $this->whenHas('current_balance', fn ($value) => (float) $value),
             'is_active' => $this->is_active,
         ];
     }

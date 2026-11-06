@@ -69,6 +69,8 @@ export interface CashAccount {
   bank_name: string | null
   account_number: string | null
   opening_balance: number
+  /** Hanya ada di daftar (GET /cash-accounts): saldo awal + Σmutasi. */
+  current_balance?: number
   is_active: boolean
 }
 

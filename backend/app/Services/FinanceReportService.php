@@ -38,13 +38,19 @@ class FinanceReportService
         return round($opening + $mutation, 2);
     }
 
-    /** @return Collection<int, array{id:int, code:string, name:string, type:string, balance:float}> */
-    public function balancesPerAccount(): Collection
+    /** Total mutasi bertanda (pemasukan − pengeluaran) per kas. @return Collection<int, float|string> */
+    public function mutationsPerAccount(): Collection
     {
-        $mutations = Transaction::query()
+        return Transaction::query()
             ->selectRaw('cash_account_id, COALESCE(SUM('.self::SIGNED_AMOUNT.'), 0) as total')
             ->groupBy('cash_account_id')
             ->pluck('total', 'cash_account_id');
+    }
+
+    /** @return Collection<int, array{id:int, code:string, name:string, type:string, balance:float}> */
+    public function balancesPerAccount(): Collection
+    {
+        $mutations = $this->mutationsPerAccount();
 
         return CashAccount::query()->orderBy('code')->get()->map(fn (CashAccount $account) => [
             'id' => $account->id,

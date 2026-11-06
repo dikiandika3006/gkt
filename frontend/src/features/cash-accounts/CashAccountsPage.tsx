@@ -84,7 +84,7 @@ export default function CashAccountsPage() {
               <TableHead>Nama</TableHead>
               <TableHead>Jenis</TableHead>
               <TableHead>Bank / No. Rekening</TableHead>
-              <TableHead className="text-right">Saldo Awal</TableHead>
+              <TableHead className="text-right">Saldo Saat Ini</TableHead>
               <TableHead>Status</TableHead>
               {canWrite && <TableHead className="w-20 pr-4" />}
             </TableRow>
@@ -103,7 +103,7 @@ export default function CashAccountsPage() {
                 <TableCell className="font-medium">{a.name}</TableCell>
                 <TableCell>{a.type_label}</TableCell>
                 <TableCell>{a.type === 'bank' ? `${a.bank_name ?? '-'} · ${a.account_number ?? '-'}` : '-'}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatRupiah(a.opening_balance)}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatRupiah(a.current_balance ?? a.opening_balance)}</TableCell>
                 <TableCell>
                   <Badge variant={a.is_active ? 'secondary' : 'outline'}>{a.is_active ? 'Aktif' : 'Nonaktif'}</Badge>
                 </TableCell>

@@ -57,6 +57,16 @@ class ReportTest extends TestCase
             ->assertJsonCount(1, 'categories.expense');
     }
 
+    public function test_cash_account_list_shows_current_balance(): void
+    {
+        Transaction::factory()->create(['cash_account_id' => $this->cash->id, 'amount' => 999_000])->delete();
+
+        $this->getJson('/api/cash-accounts')
+            ->assertOk()
+            ->assertJsonPath('data.0.opening_balance', 1_000_000)
+            ->assertJsonPath('data.0.current_balance', 1_650_000);
+    }
+
     public function test_cash_flow_has_running_balance(): void
     {
         $response = $this->getJson('/api/reports/cash-flow?start_date=2026-10-01&end_date=2026-10-31&cash_account_id='.$this->cash->id)
