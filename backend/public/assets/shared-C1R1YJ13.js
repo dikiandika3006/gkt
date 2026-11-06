@@ -1,1 +1,0 @@
-import{vt as e}from"./api-Bz5TvmTX.js";import{t}from"./badge-C0v47s6s.js";var n=e(),r={diajukan:`outline`,ditransfer:`secondary`,lpj_sebagian:`secondary`,selesai:`default`};function i({status:e,label:i}){return(0,n.jsx)(t,{variant:r[e],children:i})}export{i as t};

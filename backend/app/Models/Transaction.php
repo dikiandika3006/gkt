@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 #[Fillable([
-    'number', 'date', 'type', 'category_id', 'cash_account_id', 'amount', 'description', 'counterparty', 'reference', 'notes',
+    'number', 'date', 'type', 'category_id', 'cash_account_id', 'pocket_id', 'amount', 'description', 'counterparty', 'reference', 'notes',
     'bank_ref', 'bank_description', 'transfer_group', 'fund_request_id', 'fund_report_item_id', 'recurring_expense_id', 'recurring_period', 'created_by',
 ])]
 class Transaction extends Model
@@ -74,6 +74,11 @@ class Transaction extends Model
     public function cashAccount(): BelongsTo
     {
         return $this->belongsTo(CashAccount::class);
+    }
+
+    public function pocket(): BelongsTo
+    {
+        return $this->belongsTo(CashAccountPocket::class, 'pocket_id');
     }
 
     public function creator(): BelongsTo

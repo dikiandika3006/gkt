@@ -25,7 +25,12 @@ class TransferController extends Controller
     public function store(TransferRequest $request): JsonResponse
     {
         $data = $request->validated();
-        TransferService::ensureAccountsDiffer((int) $data['from_cash_account_id'], (int) $data['to_cash_account_id']);
+        TransferService::ensureAccountsDiffer(
+            (int) $data['from_cash_account_id'],
+            (int) $data['to_cash_account_id'],
+            isset($data['from_pocket_id']) ? (int) $data['from_pocket_id'] : null,
+            isset($data['to_pocket_id']) ? (int) $data['to_pocket_id'] : null,
+        );
 
         $legs = $this->transfers->create($data, $request->user()->id);
 
@@ -43,6 +48,7 @@ class TransferController extends Controller
     public function destroy(Request $request, string $group): JsonResponse
     {
         $this->authorizeLegs($request, $group);
+        $this->transfers->ensureDeletable($group);
         $this->transfers->delete($group);
 
         return response()->json(['message' => 'Mutasi antar kas dihapus.']);
@@ -55,7 +61,7 @@ class TransferController extends Controller
 
     private function respond(string $group, int $status = 200): JsonResponse
     {
-        $legs = $this->transfers->legs($group)->load(['category', 'cashAccount']);
+        $legs = $this->transfers->legs($group)->load(['category', 'cashAccount', 'pocket:id,name']);
 
         return response()->json(['data' => [
             'transfer_group' => $group,
