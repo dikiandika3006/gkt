@@ -562,4 +562,48 @@ export interface AppSettings {
   mutation_cash_account_id: number | null
   /** Kas awal Mutasi bila user tidak punya akses ke kas default, mis. Kas Sekretariat. */
   mutation_fallback_cash_account_id: number | null
+  /** Kop & penandatangan laporan cetak. */
+  report_church_name: string | null
+  report_signer_left_title: string | null
+  report_signer_left_name: string | null
+  report_signer_right_title: string | null
+  report_signer_right_name: string | null
+}
+
+export interface ReportHeader {
+  church_name: string
+  signers: { title: string; name: string | null }[]
+}
+
+export interface StatementGroup {
+  group: string
+  total: number
+  categories: { code: string; name: string; total: number }[]
+}
+
+export interface StatementAccount {
+  id: number
+  code: string
+  name: string
+  opening_balance: number
+  income: number
+  expense: number
+  closing_balance: number
+}
+
+export interface MonthlyStatement {
+  month: string
+  period: Period
+  header: ReportHeader
+  general: {
+    opening_balance: number
+    closing_balance: number
+    totals: PeriodTotals
+    income: StatementGroup[]
+    expense: StatementGroup[]
+    non_operational_in: { code: string; name: string; total: number }[]
+    non_operational_out: { code: string; name: string; total: number }[]
+    accounts: StatementAccount[]
+  }
+  pocket_accounts: (StatementAccount & { pockets: PocketSummary[] })[]
 }

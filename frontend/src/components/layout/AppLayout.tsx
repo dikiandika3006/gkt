@@ -1,7 +1,7 @@
-import { Suspense } from 'react'
+import { Fragment, Suspense, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { BarChart3, CalendarCheck, ClipboardList, FolderTree, HandCoins, History, Info, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Settings, Settings2, ShieldCheck, Users, Wallet } from 'lucide-react'
+import { BarChart3, CalendarCheck, ChevronDown, ClipboardList, FolderTree, HandCoins, History, Info, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Settings, Settings2, ShieldCheck, Users, Wallet } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -16,11 +16,14 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { AssistantChat } from '@/features/assistant/AssistantChat'
 import { useAuth } from '@/features/auth/AuthContext'
+import { REPORT_SECTIONS, REPORTS, reportPath } from '@/features/reports/registry'
+import { cn } from '@/lib/utils'
 import type { Module, Role } from '@/types'
 
 interface NavItem {
@@ -42,7 +45,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { to: '/recurring', label: 'Biaya Rutin', icon: CalendarCheck, modules: ['recurring'] },
       { to: '/budgets', label: 'Anggaran', icon: PiggyBank, modules: ['budgets'] },
       { to: '/fund-requests', label: 'Kas Sekretariat', icon: ClipboardList, modules: ['fund_requests'] },
-      { to: '/reports', label: 'Laporan', icon: BarChart3, modules: ['reports', 'report_secretariat'] },
     ],
   },
   {
@@ -65,7 +67,71 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   },
 ]
 
-const titles: Record<string, string> = Object.fromEntries(navGroups.flatMap((g) => g.items.map((i) => [i.to, i.label])))
+const titles: Record<string, string> = Object.fromEntries([
+  ...navGroups.flatMap((g) => g.items.map((i) => [i.to, i.label])),
+  ...REPORTS.map((r) => [reportPath(r), `Laporan · ${r.label}`]),
+])
+
+const REPORTS_OPEN_KEY = 'sidebar-reports-open'
+
+/** Grup Laporan yang bisa dilipat; isinya dikelompokkan per bagian (Bulanan, Dana, Analisa, Tahunan). */
+function ReportsNav({ isActive }: { isActive: (to: string) => boolean }) {
+  const { can } = useAuth()
+  const location = useLocation()
+  const collapsed = useSidebar().state === 'collapsed'
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(REPORTS_OPEN_KEY) !== '0'
+    } catch {
+      return true
+    }
+  })
+  const reports = REPORTS.filter((r) => can(r.module))
+  if (reports.length === 0) return null
+
+  // Saat membuka halaman laporan atau sidebar mode ikon, grup selalu tampil terbuka.
+  const expanded = open || collapsed || location.pathname.startsWith('/reports')
+  const toggle = () => {
+    const next = !expanded
+    setOpen(next)
+    try {
+      localStorage.setItem(REPORTS_OPEN_KEY, next ? '1' : '0')
+    } catch {
+      // abaikan: penyimpanan browser tidak tersedia
+    }
+  }
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel render={<button type="button" onClick={toggle} />} className="cursor-pointer hover:text-sidebar-foreground">
+        <BarChart3 className="mr-2" /> Laporan
+        <ChevronDown className={cn('ml-auto transition-transform', !expanded && '-rotate-90')} />
+      </SidebarGroupLabel>
+      {expanded && (
+        <SidebarGroupContent>
+          {REPORT_SECTIONS.map((section) => {
+            const items = reports.filter((r) => r.section === section)
+            if (items.length === 0) return null
+
+            return (
+              <SidebarMenu key={section}>
+                <p className="px-2 pt-2 pb-0.5 text-[11px] uppercase tracking-wide text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">{section}</p>
+                {items.map((r) => (
+                  <SidebarMenuItem key={r.slug}>
+                    <SidebarMenuButton isActive={isActive(reportPath(r))} tooltip={r.label} render={<NavLink to={reportPath(r)} />}>
+                      <r.icon />
+                      <span>{r.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            )
+          })}
+        </SidebarGroupContent>
+      )}
+    </SidebarGroup>
+  )
+}
 
 export function AppLayout() {
   const { user, hasRole, can, logout } = useAuth()
@@ -73,8 +139,7 @@ export function AppLayout() {
   const navigate = useNavigate()
 
   // Menu aktif = path terpanjang yang cocok, agar /offerings/settings tidak ikut menyalakan /offerings.
-  const activeTo = navGroups
-    .flatMap((g) => g.items.map((i) => i.to))
+  const activeTo = [...navGroups.flatMap((g) => g.items.map((i) => i.to)), ...REPORTS.map(reportPath)]
     .filter((to) => (to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)))
     .sort((a, b) => b.length - a.length)[0]
   const isActive = (to: string) => to === activeTo
@@ -113,7 +178,8 @@ export function AppLayout() {
 
         <SidebarContent>
           {visibleGroups.map((group) => (
-            <SidebarGroup key={group.label}>
+            <Fragment key={group.label}>
+            <SidebarGroup>
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
@@ -128,6 +194,8 @@ export function AppLayout() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            {group.label === 'Utama' && <ReportsNav isActive={isActive} />}
+            </Fragment>
           ))}
         </SidebarContent>
 

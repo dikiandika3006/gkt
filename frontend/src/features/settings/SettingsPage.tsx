@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { History, Loader2, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/PageHeader'
@@ -18,8 +19,12 @@ const NONE = 'none'
 type Key = keyof AppSettings
 type Draft = Record<Key, string>
 
+/** Setting teks (kop & penandatangan laporan); sisanya berupa id kas. */
+const TEXT_KEYS: Key[] = ['report_church_name', 'report_signer_left_title', 'report_signer_left_name', 'report_signer_right_title', 'report_signer_right_name']
+const isText = (k: string) => TEXT_KEYS.includes(k as Key)
+
 const toDraft = (s: AppSettings): Draft =>
-  Object.fromEntries(Object.entries(s).map(([k, v]) => [k, v ? String(v) : NONE])) as Draft
+  Object.fromEntries(Object.entries(s).map(([k, v]) => [k, isText(k) ? String(v ?? '') : v ? String(v) : NONE])) as Draft
 
 /** Menu Setting (admin): pengaturan umum aplikasi. Riwayat perubahan tercatat di Log Aktivitas. */
 export default function SettingsPage() {
@@ -37,13 +42,16 @@ export default function SettingsPage() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = Object.fromEntries(Object.entries(draft ?? {}).map(([k, v]) => [k, v === NONE ? null : Number(v)]))
+      const payload = Object.fromEntries(
+        Object.entries(draft ?? {}).map(([k, v]) => [k, isText(k) ? v.trim() || null : v === NONE ? null : Number(v)]),
+      )
       return (await api.put<AppSettings>('/settings', payload)).data
     },
     onSuccess: (res) => {
       toast.success('Setting disimpan.')
       queryClient.setQueryData(['settings'], res)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['reports'] })
       setEdits(null)
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -63,6 +71,17 @@ export default function SettingsPage() {
         <SelectField id={key} value={draft[key]} onChange={(v) => setEdits({ ...draft, [key]: v || NONE })} options={accountOptions(noneLabel)} />
       )}
       <p className="text-xs text-muted-foreground">{help}</p>
+    </div>
+  )
+
+  const textField = (key: Key, label: string, placeholder: string) => (
+    <div className="grid gap-2">
+      <Label htmlFor={key}>{label}</Label>
+      {isLoading || !draft ? (
+        <Skeleton className="h-9" />
+      ) : (
+        <Input id={key} value={draft[key]} placeholder={placeholder} maxLength={100} onChange={(e) => setEdits({ ...draft, [key]: e.target.value })} />
+      )}
     </div>
   )
 
@@ -120,6 +139,20 @@ export default function SettingsPage() {
               'Otomatis (kas pertama yang boleh diakses)',
               'Mis. Kas Sekretariat. Dipakai bila pengguna tidak punya akses ke kas default di atas.',
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Laporan Cetak</CardTitle>
+            <CardDescription>Kop dan kolom tanda tangan di Laporan Bulanan (dan laporan cetak lain). Kosongkan nama bila ingin ditulis tangan.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">{textField('report_church_name', 'Nama gereja di kop', 'GKT Sinai')}</div>
+            {textField('report_signer_left_title', 'Penandatangan kiri — jabatan', 'Bendahara')}
+            {textField('report_signer_left_name', 'Penandatangan kiri — nama', 'Nama bendahara')}
+            {textField('report_signer_right_title', 'Penandatangan kanan — jabatan', 'Ketua Majelis')}
+            {textField('report_signer_right_name', 'Penandatangan kanan — nama', 'Nama ketua majelis')}
           </CardContent>
         </Card>
       </div>

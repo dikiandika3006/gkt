@@ -85,4 +85,25 @@ class ReportTest extends TestCase
             ->assertJsonCount(12, 'trend')
             ->assertJsonPath('total_balance', 1_650_000);
     }
+
+    public function test_monthly_statement_shows_general_cash_and_pocket_accounts(): void
+    {
+        $special = CashAccount::factory()->create(['has_pockets' => true, 'opening_balance' => 300_000]);
+        $pocket = $special->pockets()->create(['name' => 'Natal', 'opening_balance' => 300_000]);
+        Transaction::factory()->create(['date' => '2026-10-05', 'cash_account_id' => $special->id, 'pocket_id' => $pocket->id, 'amount' => 50_000]);
+
+        $this->getJson('/api/reports/monthly-statement?month=2026-10')
+            ->assertOk()
+            ->assertJsonPath('month', '2026-10')
+            ->assertJsonPath('general.opening_balance', 1_500_000)
+            ->assertJsonPath('general.totals.income', 400_000)
+            ->assertJsonPath('general.totals.expense', 200_000)
+            ->assertJsonPath('general.closing_balance', 1_700_000)
+            ->assertJsonPath('general.accounts.0.closing_balance', 1_700_000)
+            ->assertJsonPath('pocket_accounts.0.pockets.0.name', 'Natal')
+            ->assertJsonPath('pocket_accounts.0.pockets.0.closing_balance', 350_000)
+            ->assertJsonPath('header.signers.0.title', 'Bendahara');
+
+        $this->get('/api/reports/monthly-statement/export?month=2026-10')->assertOk();
+    }
 }

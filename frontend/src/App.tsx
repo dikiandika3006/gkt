@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import LoginPage from '@/features/auth/LoginPage'
+import ReportsIndex, { ReportView } from '@/features/reports/ReportsPage'
+import { REPORTS } from '@/features/reports/registry'
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const TransactionsPage = lazy(() => import('@/features/transactions/TransactionsPage'))
@@ -17,7 +19,6 @@ const FundRequestsPage = lazy(() => import('@/features/fund-requests/FundRequest
 const FundRequestDetailPage = lazy(() => import('@/features/fund-requests/FundRequestDetailPage'))
 const CategoriesPage = lazy(() => import('@/features/categories/CategoriesPage'))
 const CashAccountsPage = lazy(() => import('@/features/cash-accounts/CashAccountsPage'))
-const ReportsPage = lazy(() => import('@/features/reports/ReportsPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
 const ActivityLogsPage = lazy(() => import('@/features/activity-logs/ActivityLogsPage'))
 const PermissionsPage = lazy(() => import('@/features/permissions/PermissionsPage'))
@@ -60,8 +61,13 @@ export default function App() {
                 <Route path="fund-requests" element={<FundRequestsPage />} />
                 <Route path="fund-requests/:id" element={<FundRequestDetailPage />} />
               </Route>
-              {/* Tab laporan disaring per hak di dalam halaman. */}
-              <Route path="reports" element={<ReportsPage />} />
+              {/* Setiap laporan = halaman sendiri, dijaga per modul hak akses. */}
+              <Route path="reports" element={<ReportsIndex />} />
+              {REPORTS.map((r) => (
+                <Route key={r.slug} element={<ProtectedRoute module={r.module} />}>
+                  <Route path={`reports/${r.slug}`} element={<ReportView report={r} />} />
+                </Route>
+              ))}
               <Route element={<ProtectedRoute module="categories" />}>
                 <Route path="categories" element={<CategoriesPage />} />
               </Route>

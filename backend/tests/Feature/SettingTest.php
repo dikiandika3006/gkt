@@ -99,4 +99,20 @@ class SettingTest extends TestCase
         $logs = ActivityLog::where('subject_type', (new AppSetting)->getMorphClass())->orderBy('id')->get();
         $this->assertSame(['created', 'updated'], $logs->pluck('action')->all());
     }
+
+    public function test_report_header_text_settings_are_saved_and_used(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Admin]));
+
+        $this->putJson('/api/settings', ['report_signer_left_name' => '  Ibu Sari  ', 'report_church_name' => 'GKT Jemaat Sinai Batu'])
+            ->assertOk()
+            ->assertJsonPath('report_signer_left_name', 'Ibu Sari')
+            ->assertJsonPath('report_signer_right_name', null);
+
+        $this->getJson('/api/reports/monthly-statement')
+            ->assertOk()
+            ->assertJsonPath('header.church_name', 'GKT Jemaat Sinai Batu')
+            ->assertJsonPath('header.signers.0.name', 'Ibu Sari')
+            ->assertJsonPath('header.signers.1.title', 'Ketua Majelis');
+    }
 }

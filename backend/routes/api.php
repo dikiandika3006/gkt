@@ -115,10 +115,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/cash-flow', [ReportController::class, 'cashFlow']);
         Route::get('/reports/monthly', [ReportController::class, 'monthly']);
         Route::get('/reports/categories', [ReportController::class, 'categories']);
+        Route::get('/reports/monthly-statement', [ReportController::class, 'monthlyStatement']);
     });
     Route::get('/reports/secretariat', [ReportController::class, 'secretariat'])->middleware('permission:report_secretariat,view');
     Route::get('/reports/{name}/export', [ReportController::class, 'export'])
-        ->whereIn('name', ['cash-flow', 'monthly', 'categories', 'secretariat'])
+        ->whereIn('name', ['cash-flow', 'monthly', 'categories', 'secretariat', 'monthly-statement'])
         ->middleware('permission:reports|report_secretariat,view');
 
     // Master data.

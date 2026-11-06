@@ -391,6 +391,77 @@ class FinanceReportService
         ];
     }
 
+    /**
+     * Laporan keuangan bulanan (siap cetak): kas umum per kelompok & kategori, posisi per kas,
+     * dan rekening dana khusus (ber-pocket) per pocket.
+     */
+    public function monthlyStatement(Carbon $month): array
+    {
+        $start = $month->copy()->startOfMonth()->startOfDay();
+        $end = $month->copy()->endOfMonth()->endOfDay();
+        $after = $end->copy()->addDay()->startOfDay();
+
+        $categories = $this->byCategory($start, $end);
+        $groups = fn (Collection $rows) => $rows
+            ->groupBy('group')
+            ->map(fn (Collection $g, string $group) => [
+                'group' => $group,
+                'total' => round((float) $g->sum('total'), 2),
+                'categories' => $g->map(fn ($r) => ['code' => $r['code'], 'name' => $r['name'], 'total' => $r['total']])->values(),
+            ])
+            ->sortBy(fn (array $g) => $g['categories']->first()['code'] ?? '')
+            ->values();
+        $operational = fn (Collection $rows) => $rows->where('nature', CategoryNature::Operational->value);
+        $nonOperational = fn (Collection $rows) => $rows->whereIn('nature', [CategoryNature::Titipan->value, CategoryNature::Pinjaman->value])
+            ->map(fn ($r) => ['code' => $r['code'], 'name' => $r['name'], 'total' => $r['total']])->values();
+
+        $perAccount = Transaction::query()
+            ->whereDate('date', '>=', $start)
+            ->whereDate('date', '<=', $end)
+            ->selectRaw('cash_account_id, transactions.type as type, SUM(transactions.amount) as total')
+            ->groupBy('cash_account_id', 'transactions.type')
+            ->get();
+        $accountRow = function (CashAccount $account) use ($perAccount, $start, $after) {
+            $sum = fn (TransactionType $type) => round((float) $perAccount
+                ->filter(fn ($r) => (int) $r->cash_account_id === $account->id && $this->typeValue($r->type) === $type->value)
+                ->sum('total'), 2);
+
+            return [
+                'id' => $account->id,
+                'code' => $account->code,
+                'name' => $account->name,
+                'opening_balance' => $this->balance($account->id, $start),
+                'income' => $sum(TransactionType::Income),
+                'expense' => $sum(TransactionType::Expense),
+                'closing_balance' => $this->balance($account->id, $after),
+            ];
+        };
+
+        $accounts = CashAccount::orderBy('code')->get();
+        $active = fn (array $row, CashAccount $a) => $a->is_active || $row['opening_balance'] != 0 || $row['income'] != 0 || $row['expense'] != 0;
+
+        return [
+            'month' => $start->format('Y-m'),
+            'period' => ['start_date' => $start->toDateString(), 'end_date' => $end->toDateString()],
+            'general' => [
+                'opening_balance' => $this->balance(null, $start),
+                'totals' => $this->totals($start, $end),
+                'closing_balance' => $this->balance(null, $after),
+                'income' => $groups($operational($categories['income'])),
+                'expense' => $groups($operational($categories['expense'])),
+                'non_operational_in' => $nonOperational($categories['income']),
+                'non_operational_out' => $nonOperational($categories['expense']),
+                'accounts' => $accounts->where('has_pockets', false)
+                    ->map(fn (CashAccount $a) => [$accountRow($a), $a])
+                    ->filter(fn ($pair) => $active(...$pair))
+                    ->map(fn ($pair) => $pair[0])->values(),
+            ],
+            'pocket_accounts' => $accounts->where('has_pockets', true)
+                ->map(fn (CashAccount $a) => [...$accountRow($a), 'pockets' => $this->pocketSummary($a->id, $start, $end)])
+                ->values(),
+        ];
+    }
+
     /** @return Collection<int, string> daftar 'Y-m' dari $start s/d $end */
     public function monthKeys(Carbon $start, Carbon $end): Collection
     {
