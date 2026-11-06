@@ -10,6 +10,7 @@ use App\Http\Resources\AttachmentResource;
 use App\Models\Attachment;
 use App\Models\FundReportItem;
 use App\Models\Transaction;
+use App\Services\PermissionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -92,6 +93,11 @@ class AttachmentController extends Controller
 
         if ($level === PermissionLevel::View && $parent instanceof Transaction && $parent->fund_request_id) {
             return $user->hasPermission(Module::Transactions) || $user->hasPermission(Module::FundRequests);
+        }
+
+        // Lampiran transaksi juga mengikuti akses kas di Mutasi.
+        if ($parent instanceof Transaction && ! app(PermissionService::class)->canUseCashAccount($user, (int) $parent->cash_account_id)) {
+            return false;
         }
 
         return $user->hasPermission($module, $level);

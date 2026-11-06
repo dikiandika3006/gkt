@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\TransactionType;
+use App\Rules\AccessibleCashAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,7 +13,7 @@ class BankImportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true)],
+            'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true), new AccessibleCashAccount],
             'rows' => ['required', 'array', 'min:1', 'max:1000'],
             'rows.*.key' => ['required', 'string', 'regex:/^[a-f0-9]{40}$/', 'distinct'],
             'rows.*.date' => ['required', 'date'],

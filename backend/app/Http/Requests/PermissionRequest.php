@@ -18,6 +18,18 @@ class PermissionRequest extends FormRequest
             'permissions' => ['required', 'array'],
             'permissions.*' => ['array'],
             'permissions.*.*' => ['required', Rule::enum(PermissionLevel::class)],
+            // Akses kas di Mutasi: role => daftar kas, null = semua kas.
+            'cash_accounts' => ['sometimes', 'array'],
+            'cash_accounts.*' => ['present', 'nullable', 'array', 'min:1'],
+            'cash_accounts.*.*' => ['integer', 'distinct', Rule::exists('cash_accounts', 'id')],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'cash_accounts.*.min' => 'Pilih minimal satu kas.',
+            'cash_accounts.*.*.exists' => 'Kas tidak ditemukan.',
         ];
     }
 
@@ -26,6 +38,12 @@ class PermissionRequest extends FormRequest
         return [
             function (Validator $validator) {
                 $roles = array_map(fn (UserRole $r) => $r->value, Module::configurableRoles());
+
+                foreach (array_keys((array) $this->input('cash_accounts', [])) as $role) {
+                    if (! in_array($role, $roles, true)) {
+                        $validator->errors()->add("cash_accounts.{$role}", 'Akses kas role ini tidak bisa diubah.');
+                    }
+                }
 
                 foreach ((array) $this->input('permissions', []) as $role => $modules) {
                     if (! in_array($role, $roles, true)) {

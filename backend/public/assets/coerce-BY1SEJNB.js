@@ -1,1 +1,0 @@
-import{g as e,s as t}from"./dialog-Dofk37u_.js";function n(n){return e(t,n)}export{n as t};

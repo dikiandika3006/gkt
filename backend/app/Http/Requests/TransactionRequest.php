@@ -6,6 +6,7 @@ use App\Enums\CategoryNature;
 use App\Enums\TransactionType;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Rules\AccessibleCashAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -18,7 +19,7 @@ class TransactionRequest extends FormRequest
             'date' => ['required', 'date'],
             'type' => ['required', Rule::enum(TransactionType::class)],
             'category_id' => ['required', Rule::exists('categories', 'id')->where('is_active', true)],
-            'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true)],
+            'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true), new AccessibleCashAccount],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
             'description' => ['required', 'string', 'max:255'],
             'counterparty' => ['nullable', 'string', 'max:255'],

@@ -20,6 +20,9 @@ class UserResource extends JsonResource
             'is_active' => $this->is_active,
             // Hak akses per modul (menu Hak Akses), dipakai frontend untuk menu & tombol.
             'permissions' => app(PermissionService::class)->forUser($this->resource),
+            // Kas yang boleh dipakai di Mutasi (null = semua) dan kas awal halaman Mutasi.
+            'cash_account_ids' => app(PermissionService::class)->cashAccountIdsFor($this->resource),
+            'default_cash_account_id' => app(PermissionService::class)->defaultCashAccountFor($this->resource),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

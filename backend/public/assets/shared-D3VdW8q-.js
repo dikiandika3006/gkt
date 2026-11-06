@@ -1,0 +1,1 @@
+import{y as e}from"./card-CYEo4yGe.js";import{t}from"./badge-BTi0P3TA.js";var n=e(),r={diajukan:`outline`,ditransfer:`secondary`,lpj_sebagian:`secondary`,selesai:`default`};function i({status:e,label:i}){return(0,n.jsx)(t,{variant:r[e],children:i})}export{i as t};

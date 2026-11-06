@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BankImportRequest;
+use App\Rules\AccessibleCashAccount;
 use App\Services\BankImport\BankImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ class BankImportController extends Controller
     {
         $data = $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
-            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id'],
+            'cash_account_id' => ['nullable', 'integer', 'exists:cash_accounts,id', new AccessibleCashAccount],
         ]);
 
         try {
