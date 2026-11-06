@@ -23,23 +23,31 @@ class TransferService
     public const CATEGORY_IN = 'TRF-MASUK';
 
     /**
-     * @param  array{date: string, from_cash_account_id: int, to_cash_account_id: int, amount: float|string, description: string, reference?: ?string, fund_request_id?: ?int}  $data
+     * @param  array{date: string, from_cash_account_id: int, to_cash_account_id: int, from_pocket_id?: ?int, to_pocket_id?: ?int, amount: float|string, description: string, reference?: ?string, fund_request_id?: ?int}  $data
      * @return Collection<int, Transaction> [keluar, masuk]
      */
     public function create(array $data, ?int $userId): Collection
     {
+        // Jalur selain TransferRequest (mis. transfer ke pengajuan dana) juga wajib mematuhi aturan pocket.
+        $pockets = app(PocketService::class);
+        foreach (['from', 'to'] as $side) {
+            $error = $pockets->membershipError((int) $data["{$side}_cash_account_id"], $data["{$side}_pocket_id"] ?? null);
+            abort_if($error !== null, 422, $error);
+        }
+
         return DB::transaction(function () use ($data, $userId) {
             Transaction::lockNumbering();
             $group = (string) Str::uuid();
 
             return collect([
-                [TransactionType::Expense, $data['from_cash_account_id'], $this->category(self::CATEGORY_OUT)],
-                [TransactionType::Income, $data['to_cash_account_id'], $this->category(self::CATEGORY_IN)],
+                [TransactionType::Expense, $data['from_cash_account_id'], $this->category(self::CATEGORY_OUT), $data['from_pocket_id'] ?? null],
+                [TransactionType::Income, $data['to_cash_account_id'], $this->category(self::CATEGORY_IN), $data['to_pocket_id'] ?? null],
             ])->map(fn (array $leg) => Transaction::create([
                 'date' => $data['date'],
                 'type' => $leg[0],
                 'category_id' => $leg[2]->id,
                 'cash_account_id' => $leg[1],
+                'pocket_id' => $leg[3],
                 'amount' => $data['amount'],
                 'description' => $data['description'],
                 'reference' => $data['reference'] ?? null,
@@ -91,9 +99,18 @@ class TransferService
         ]);
     }
 
-    public static function ensureAccountsDiffer(int $from, int $to): void
+    /** Kas boleh sama bila pocket-nya berbeda (mutasi antar pocket dalam satu rekening). */
+    public static function ensureAccountsDiffer(int $from, int $to, ?int $fromPocket = null, ?int $toPocket = null): void
     {
-        abort_if($from === $to, 422, 'Kas asal dan kas tujuan tidak boleh sama.');
-        abort_unless(CashAccount::whereIn('id', [$from, $to])->where('is_active', true)->count() === 2, 422, 'Kas tidak ditemukan atau nonaktif.');
+        abort_if($from === $to && $fromPocket === $toPocket, 422, $fromPocket ? 'Pocket asal dan pocket tujuan tidak boleh sama.' : 'Kas asal dan kas tujuan tidak boleh sama.');
+        abort_unless(CashAccount::whereIn('id', array_unique([$from, $to]))->where('is_active', true)->count() === count(array_unique([$from, $to])), 422, 'Kas tidak ditemukan atau nonaktif.');
+    }
+
+    /** Hapus transfer tidak boleh membuat saldo pocket minus. */
+    public function ensureDeletable(string $group): void
+    {
+        $changes = $this->legs($group)->whereNotNull('pocket_id')->mapWithKeys(fn (Transaction $t) => [$t->pocket_id => 0.0])->all();
+        $error = app(PocketService::class)->shortfallError($changes, null, $group);
+        abort_if($error !== null, 422, $error);
     }
 }

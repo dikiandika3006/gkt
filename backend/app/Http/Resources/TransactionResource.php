@@ -24,6 +24,8 @@ class TransactionResource extends JsonResource
             'bank_description' => $this->bank_description,
             'category_id' => $this->category_id,
             'cash_account_id' => $this->cash_account_id,
+            'pocket_id' => $this->pocket_id,
+            'pocket' => $this->whenLoaded('pocket', fn () => $this->pocket?->only('id', 'name')),
             'transfer_group' => $this->transfer_group,
             'fund_request_id' => $this->fund_request_id,
             'fund_report_item_id' => $this->fund_report_item_id,

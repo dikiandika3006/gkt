@@ -7,6 +7,7 @@ use App\Enums\TransactionType;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Rules\AccessibleCashAccount;
+use App\Services\PocketService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -20,6 +21,7 @@ class TransactionRequest extends FormRequest
             'type' => ['required', Rule::enum(TransactionType::class)],
             'category_id' => ['required', Rule::exists('categories', 'id')->where('is_active', true)],
             'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true), new AccessibleCashAccount],
+            'pocket_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999999.99'],
             'description' => ['required', 'string', 'max:255'],
             'counterparty' => ['nullable', 'string', 'max:255'],
@@ -59,6 +61,19 @@ class TransactionRequest extends FormRequest
 
                 if ($this->filled('recurring_expense_id') && $type !== TransactionType::Expense) {
                     $validator->errors()->add('recurring_expense_id', 'Biaya rutin hanya untuk transaksi pengeluaran.');
+                }
+
+                $pockets = app(PocketService::class);
+                $pocketId = $this->filled('pocket_id') ? (int) $this->input('pocket_id') : null;
+                if ($error = $pockets->membershipError((int) $this->input('cash_account_id'), $pocketId, $existing?->pocket_id)) {
+                    $validator->errors()->add('pocket_id', $error);
+
+                    return;
+                }
+
+                $changes = PocketService::transactionChanges($existing, $pocketId, $type, $this->input('amount'));
+                if ($error = $pockets->shortfallError($changes, $existing?->id)) {
+                    $validator->errors()->add('amount', $error);
                 }
             },
         ];

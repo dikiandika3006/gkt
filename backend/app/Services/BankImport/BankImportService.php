@@ -83,6 +83,10 @@ class BankImportService
      */
     public function commit(int $cashAccountId, array $rows, int $userId): int
     {
+        if (CashAccount::whereKey($cashAccountId)->value('has_pockets')) {
+            throw ValidationException::withMessages(['cash_account_id' => 'Import mutasi bank belum mendukung rekening ber-pocket.']);
+        }
+
         $categories = Category::whereIn('id', collect($rows)->pluck('lines.*.category_id')->flatten()->unique())->get()->keyBy('id');
         $this->validateRows($rows, $categories);
 

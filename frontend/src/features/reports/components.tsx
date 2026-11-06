@@ -67,7 +67,25 @@ export function CashAccountFilter({ value, onChange, allowAll = true, onlyCash =
         value={value}
         onChange={(v) => onChange(v === ALL ? '' : v)}
         placeholder="Semua kas"
-        options={allowAll ? [{ value: ALL, label: 'Semua kas' }, ...options] : options}
+        options={allowAll ? [{ value: ALL, label: 'Semua kas (tanpa rekening pocket)' }, ...options] : options}
+      />
+    </Field>
+  )
+}
+
+/** Filter pocket; hanya tampil bila kas terpilih adalah rekening ber-pocket. */
+export function PocketFilter({ cashAccountId, value, onChange }: { cashAccountId: string; value: string; onChange: (v: string) => void }) {
+  const { data: cashAccounts = [] } = useCashAccounts()
+  const account = cashAccounts.find((c) => String(c.id) === cashAccountId)
+  if (!account?.has_pockets) return null
+
+  return (
+    <Field label="Pocket" className="min-w-40">
+      <SelectField
+        value={value}
+        onChange={(v) => onChange(v === ALL ? '' : v)}
+        placeholder="Semua pocket"
+        options={[{ value: ALL, label: 'Semua pocket' }, ...(account.pockets ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
       />
     </Field>
   )

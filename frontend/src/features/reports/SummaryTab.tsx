@@ -69,6 +69,48 @@ export function SummaryTab() {
         </div>
       )}
 
+      {data && data.pockets.length > 0 && (
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b py-3">
+            <CardTitle className="text-base">Rincian per Pocket</CardTitle>
+          </CardHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">Pocket</TableHead>
+                <TableHead className="text-right">Saldo Awal</TableHead>
+                <TableHead className="text-right">Masuk</TableHead>
+                <TableHead className="text-right">Keluar</TableHead>
+                <TableHead className="pr-4 text-right">Saldo Akhir</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.pockets.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="pl-4">
+                    {p.name}
+                    {!p.is_active && <span className="ml-1 text-xs text-muted-foreground">(nonaktif)</span>}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatRupiah(p.opening_balance)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatRupiah(p.income)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatRupiah(p.expense)}</TableCell>
+                  <TableCell className={`pr-4 text-right tabular-nums ${p.closing_balance < 0 ? 'text-destructive' : ''}`}>{formatRupiah(p.closing_balance)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell className="pl-4">Total</TableCell>
+                <TableCell className="text-right tabular-nums">{formatRupiah(data.pockets.reduce((s, p) => s + p.opening_balance, 0))}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatRupiah(data.pockets.reduce((s, p) => s + p.income, 0))}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatRupiah(data.pockets.reduce((s, p) => s + p.expense, 0))}</TableCell>
+                <TableCell className="pr-4 text-right tabular-nums">{formatRupiah(data.pockets.reduce((s, p) => s + p.closing_balance, 0))}</TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
+        </Card>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <CategoryTable title="Pemasukan" rows={income.operational} other={income.other} />
         <CategoryTable title="Pengeluaran" rows={expense.operational} other={expense.other} />

@@ -13,7 +13,7 @@ import { FormField } from '@/components/FormField'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage, fieldErrors } from '@/lib/api'
-import { toDateInput } from '@/lib/format'
+import { formatRupiah, toDateInput } from '@/lib/format'
 import { useAccessibleCashAccounts, useCategories, useCounterparties, useRecurringExpenses } from '@/lib/queries'
 import type { Transaction } from '@/types'
 
@@ -25,6 +25,7 @@ const schema = z
     type: z.enum(['income', 'expense']),
     category_id: z.string().min(1, 'Kategori wajib dipilih'),
     cash_account_id: z.string().min(1, 'Kas/rekening wajib dipilih'),
+    pocket_id: z.string().optional(),
     amount: z.coerce.number<string>().positive('Jumlah harus lebih dari 0'),
     description: z.string().trim().min(1, 'Keterangan wajib diisi').max(255),
     counterparty: z.string().max(255).optional(),
@@ -58,10 +59,15 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
   const type = watch('type')
   const counterparty = watch('counterparty') ?? ''
   const recurringId = watch('recurring_expense_id')
+  const cashAccountId = watch('cash_account_id')
   const { data: categories = [] } = useCategories({ type, activeOnly: true, excludeTransfer: true })
   const { data: cashAccounts = [] } = useAccessibleCashAccounts({ activeOnly: true })
   const { data: recurring = [] } = useRecurringExpenses()
   const { data: names = [] } = useCounterparties(counterparty.length >= 2 ? counterparty : '')
+  const selectedAccount = cashAccounts.find((c) => String(c.id) === cashAccountId)
+  const pocketOptions = (selectedAccount?.pockets ?? [])
+    .filter((p) => p.is_active || p.id === transaction?.pocket_id)
+    .map((p) => ({ value: String(p.id), label: p.current_balance === null ? p.name : `${p.name} (saldo ${formatRupiah(p.current_balance)})` }))
 
   // Lampiran hanya bisa dikelola setelah transaksi tersimpan.
   const detail = useQuery({
@@ -79,6 +85,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
             type: transaction.type,
             category_id: String(transaction.category_id),
             cash_account_id: String(transaction.cash_account_id),
+            pocket_id: transaction.pocket_id ? String(transaction.pocket_id) : '',
             amount: String(transaction.amount),
             description: transaction.description,
             counterparty: transaction.counterparty ?? '',
@@ -92,6 +99,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
             type: 'income',
             category_id: '',
             cash_account_id: '',
+            pocket_id: '',
             description: '',
             counterparty: '',
             reference: '',
@@ -108,6 +116,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
     mutationFn: (values: Output) => {
       const payload = {
         ...values,
+        pocket_id: values.pocket_id ? Number(values.pocket_id) : null,
         recurring_expense_id: values.type === 'expense' && values.recurring_expense_id ? Number(values.recurring_expense_id) : null,
         recurring_period: values.type === 'expense' && values.recurring_expense_id ? values.recurring_period : null,
       }
@@ -119,6 +128,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['reports'] })
       queryClient.invalidateQueries({ queryKey: ['recurring-status'] })
+      queryClient.invalidateQueries({ queryKey: ['cash-accounts'] })
       onOpenChange(false)
     },
     onError: (err) => {
@@ -137,7 +147,17 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
           <DialogTitle>{transaction ? `Ubah Transaksi ${transaction.number}` : 'Tambah Transaksi'}</DialogTitle>
         </DialogHeader>
 
-        <form id="transaction-form" onSubmit={handleSubmit((v) => mutation.mutate(v))} className="grid gap-4 sm:grid-cols-2">
+        <form
+          id="transaction-form"
+          onSubmit={handleSubmit((v) => {
+            if (selectedAccount?.has_pockets && !v.pocket_id) {
+              setError('pocket_id', { message: 'Pocket wajib dipilih' })
+              return
+            }
+            mutation.mutate(v)
+          })}
+          className="grid gap-4 sm:grid-cols-2"
+        >
           <FormField label="Jenis" error={errors.type?.message}>
             <Controller
               control={control}
@@ -183,13 +203,27 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
               render={({ field }) => (
                 <SelectField
                   value={field.value ?? ''}
-                  onChange={field.onChange}
+                  onChange={(v) => {
+                    field.onChange(v)
+                    setValue('pocket_id', '')
+                  }}
                   invalid={!!errors.cash_account_id}
                   options={cashAccounts.map((c) => ({ value: String(c.id), label: c.name }))}
                 />
               )}
             />
           </FormField>
+          {selectedAccount?.has_pockets && (
+            <FormField label="Pocket" error={errors.pocket_id?.message}>
+              <Controller
+                control={control}
+                name="pocket_id"
+                render={({ field }) => (
+                  <SelectField value={field.value ?? ''} onChange={field.onChange} invalid={!!errors.pocket_id} placeholder="Pilih pocket" options={pocketOptions} />
+                )}
+              />
+            </FormField>
+          )}
           <FormField label="Jumlah (Rp)" htmlFor="amount" error={errors.amount?.message}>
             <Input id="amount" type="number" min={0} step="any" inputMode="decimal" {...register('amount')} aria-invalid={!!errors.amount} />
           </FormField>

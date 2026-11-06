@@ -28,7 +28,7 @@ export default function TransactionsPage() {
   const { user, can } = useAuth()
   const canWrite = can('transactions', 'manage')
   const queryClient = useQueryClient()
-  const [filters, setFilters] = useState({ start_date: '', end_date: '', type: '', category_id: '', search: '' })
+  const [filters, setFilters] = useState({ start_date: '', end_date: '', type: '', category_id: '', search: '', pocket_id: '' })
   // Kas wajib dipilih; awalnya kas default user (Setting + akses kas), lalu kas pertama yang boleh.
   const [pickedAccount, setPickedAccount] = useState('')
   const [page, setPage] = useState(1)
@@ -43,6 +43,7 @@ export default function TransactionsPage() {
   const { data: cashAccounts = [], isLoading: accountsLoading } = useAccessibleCashAccounts()
   const fallbackAccount = cashAccounts.find((c) => c.id === user?.default_cash_account_id) ?? cashAccounts.find((c) => c.is_active) ?? cashAccounts[0]
   const cashAccountId = pickedAccount || (fallbackAccount ? String(fallbackAccount.id) : '')
+  const selectedAccount = cashAccounts.find((c) => String(c.id) === cashAccountId)
   // Transaksi baru otomatis memakai kas yang sedang dipilih. Di-memo agar form tidak ter-reset saat render ulang.
   const newDraft = useMemo(() => (cashAccountId ? { cash_account_id: cashAccountId } : null), [cashAccountId])
   const params = { ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '')), cash_account_id: cashAccountId }
@@ -62,6 +63,7 @@ export default function TransactionsPage() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['fund-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['cash-accounts'] })
       setDeleting(null)
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -132,12 +134,28 @@ export default function TransactionsPage() {
           onChange={(v) => {
             if (!v) return // wajib dipilih, tidak bisa dikosongkan
             setPickedAccount(v)
+            setFilters((f) => ({ ...f, pocket_id: '' }))
             setPage(1)
           }}
           placeholder={accountsLoading ? 'Memuat kas...' : 'Pilih kas / rekening'}
           className="sm:w-80"
           options={cashAccounts.map((c) => ({ value: String(c.id), label: c.is_active ? c.name : `${c.name} (nonaktif)` }))}
         />
+        {selectedAccount?.has_pockets && (
+          <SelectField
+            value={filters.pocket_id}
+            onChange={(v) => setFilter('pocket_id', v)}
+            placeholder="Semua pocket"
+            className="sm:w-60"
+            options={[
+              { value: ALL, label: 'Semua pocket' },
+              ...(selectedAccount.pockets ?? []).map((p) => ({
+                value: String(p.id),
+                label: p.current_balance === null ? p.name : `${p.name} · ${formatRupiah(p.current_balance)}`,
+              })),
+            ]}
+          />
+        )}
       </div>
 
       <Card>
@@ -216,7 +234,10 @@ export default function TransactionsPage() {
                   {t.fund_report_item_id && <Badge variant="outline" className="mt-0.5">LPJ</Badge>}
                 </TableCell>
                 <TableCell>{t.category?.name}</TableCell>
-                <TableCell>{t.cash_account?.name}</TableCell>
+                <TableCell>
+                  {t.cash_account?.name}
+                  {t.pocket && <span className="block text-xs text-muted-foreground">Pocket {t.pocket.name}</span>}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">
                   <Badge variant={t.type === 'income' ? 'secondary' : 'outline'}>
                     {t.type === 'income' ? '+' : '−'} {formatRupiah(t.amount)}

@@ -9,6 +9,7 @@ use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\ExcelExportService;
 use App\Services\PermissionService;
+use App\Services\PocketService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ class TransactionController extends Controller
         $filters = $this->validateFilters($request);
 
         $transactions = $this->scopedQuery($request, $filters)
-            ->with(['category', 'cashAccount', 'creator:id,name'])
+            ->with(['category', 'cashAccount', 'pocket:id,name', 'creator:id,name'])
             ->withCount('attachments')
             ->orderByDesc('date')
             ->orderByDesc('id')
@@ -42,7 +43,7 @@ class TransactionController extends Controller
         $filters = $this->validateFilters($request);
 
         $rows = $this->scopedQuery($request, $filters)
-            ->with(['category:id,name,group', 'cashAccount:id,name'])
+            ->with(['category:id,name,group', 'cashAccount:id,name', 'pocket:id,name'])
             ->orderBy('date')
             ->orderBy('id')
             ->get()
@@ -56,7 +57,7 @@ class TransactionController extends Controller
                 $t->description,
                 $t->type === TransactionType::Income ? (float) $t->amount : 0,
                 $t->type === TransactionType::Expense ? (float) $t->amount : 0,
-                (string) $t->cashAccount?->name,
+                $t->pocket ? "{$t->cashAccount?->name} · {$t->pocket->name}" : (string) $t->cashAccount?->name,
                 (string) $t->reference,
                 (string) $t->notes,
             ])
@@ -81,6 +82,7 @@ class TransactionController extends Controller
             'type' => ['nullable', Rule::enum(TransactionType::class)],
             'category_id' => ['nullable', 'integer'],
             'cash_account_id' => ['nullable', 'integer'],
+            'pocket_id' => ['nullable', 'integer'],
             'search' => ['nullable', 'string', 'max:100'],
             'recurring_expense_id' => ['nullable', 'integer'],
             'recurring_period' => ['nullable', 'date_format:Y-m'],
@@ -106,6 +108,7 @@ class TransactionController extends Controller
             ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
             ->when($filters['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
             ->when($filters['cash_account_id'] ?? null, fn ($q, $v) => $q->where('cash_account_id', $v))
+            ->when($filters['pocket_id'] ?? null, fn ($q, $v) => $q->where('pocket_id', $v))
             ->when($filters['recurring_expense_id'] ?? null, fn ($q, $v) => $q->where('recurring_expense_id', $v))
             ->when($filters['recurring_period'] ?? null, fn ($q, $v) => $q->where('recurring_period', $v))
             ->when($filters['search'] ?? null, fn ($q, $v) => $q->where(function ($q) use ($v) {
@@ -128,14 +131,14 @@ class TransactionController extends Controller
             ]);
         });
 
-        return new TransactionResource($transaction->load(['category', 'cashAccount', 'creator:id,name']));
+        return new TransactionResource($transaction->load(['category', 'cashAccount', 'pocket:id,name', 'creator:id,name']));
     }
 
     public function show(Request $request, Transaction $transaction): TransactionResource
     {
         $this->permissions->ensureCashAccess($request->user(), [$transaction->cash_account_id]);
 
-        return new TransactionResource($transaction->load(['category', 'cashAccount', 'creator:id,name', 'attachments']));
+        return new TransactionResource($transaction->load(['category', 'cashAccount', 'pocket:id,name', 'creator:id,name', 'attachments']));
     }
 
     public function update(TransactionRequest $request, Transaction $transaction): TransactionResource
@@ -144,15 +147,19 @@ class TransactionController extends Controller
         $this->permissions->ensureCashAccess($request->user(), [$transaction->cash_account_id]);
         $transaction->update($request->validated());
 
-        return new TransactionResource($transaction->load(['category', 'cashAccount', 'creator:id,name']));
+        return new TransactionResource($transaction->load(['category', 'cashAccount', 'pocket:id,name', 'creator:id,name']));
     }
 
-    public function destroy(Request $request, Transaction $transaction): JsonResponse
+    public function destroy(Request $request, Transaction $transaction, PocketService $pockets): JsonResponse
     {
         $this->permissions->ensureCashAccess($request->user(), [$transaction->cash_account_id]);
 
         if ($transaction->isManaged()) {
             abort(422, 'Transaksi ini dikelola dari modul Mutasi Antar Kas / LPJ. Hapus dari sana.');
+        }
+
+        if ($error = $pockets->shortfallError(PocketService::transactionChanges($transaction, null, null, null), $transaction->id)) {
+            abort(422, $error);
         }
 
         $transaction->delete();

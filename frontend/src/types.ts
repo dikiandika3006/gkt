@@ -77,6 +77,18 @@ export interface CashAccount {
   opening_balance: number
   /** Hanya ada di daftar (GET /cash-accounts): saldo awal + Σmutasi. */
   current_balance?: number
+  /** Rekening dana khusus ber-pocket: setiap transaksi wajib memilih pocket; dikecualikan dari "Semua kas". */
+  has_pockets: boolean
+  pockets?: CashAccountPocket[]
+  is_active: boolean
+}
+
+export interface CashAccountPocket {
+  id: number
+  name: string
+  opening_balance: number
+  /** Hanya ada di daftar (GET /cash-accounts). */
+  current_balance: number | null
   is_active: boolean
 }
 
@@ -103,6 +115,8 @@ export interface Transaction {
   bank_description: string | null
   category_id: number
   cash_account_id: number
+  pocket_id: number | null
+  pocket?: { id: number; name: string } | null
   transfer_group: string | null
   fund_request_id: number | null
   fund_report_item_id: number | null
@@ -211,6 +225,18 @@ export interface ReportSummary extends PeriodTotals {
   opening_balance: number
   closing_balance: number
   categories: { income: CategoryTotal[]; expense: CategoryTotal[] }
+  /** Rincian per pocket — hanya terisi bila difilter ke rekening ber-pocket. */
+  pockets: PocketSummary[]
+}
+
+export interface PocketSummary {
+  id: number
+  name: string
+  is_active: boolean
+  opening_balance: number
+  income: number
+  expense: number
+  closing_balance: number
 }
 
 export interface CashFlowReport {
@@ -225,6 +251,7 @@ export interface CashFlowReport {
     counterparty: string | null
     category: string | null
     cash_account: string | null
+    pocket: string | null
     income: number
     expense: number
     balance: number

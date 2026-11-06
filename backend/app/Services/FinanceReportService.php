@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\CategoryNature;
 use App\Enums\TransactionType;
 use App\Models\CashAccount;
+use App\Models\CashAccountPocket;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -27,7 +28,7 @@ class FinanceReportService
     public function balance(?int $cashAccountId = null, ?Carbon $before = null): float
     {
         $opening = (float) CashAccount::query()
-            ->when($cashAccountId, fn ($q) => $q->whereKey($cashAccountId))
+            ->when($cashAccountId, fn ($q) => $q->whereKey($cashAccountId), fn ($q) => $q->where('has_pockets', false))
             ->sum('opening_balance');
 
         $mutation = (float) $this->baseQuery($cashAccountId)
@@ -47,12 +48,85 @@ class FinanceReportService
             ->pluck('total', 'cash_account_id');
     }
 
-    /** @return Collection<int, array{id:int, code:string, name:string, type:string, balance:float}> */
+    /** Total mutasi bertanda per pocket. @return Collection<int, float|string> */
+    public function mutationsPerPocket(?int $cashAccountId = null): Collection
+    {
+        return Transaction::query()
+            ->whereNotNull('pocket_id')
+            ->when($cashAccountId, fn ($q) => $q->where('cash_account_id', $cashAccountId))
+            ->selectRaw('pocket_id, COALESCE(SUM('.self::SIGNED_AMOUNT.'), 0) as total')
+            ->groupBy('pocket_id')
+            ->pluck('total', 'pocket_id');
+    }
+
+    /** Saldo pocket saat ini (saldo awal pocket + Σmutasi), opsional tanpa satu transaksi/grup transfer (untuk validasi edit). */
+    public function pocketBalance(int $pocketId, ?int $exceptTransactionId = null, ?string $exceptTransferGroup = null): float
+    {
+        $opening = (float) CashAccountPocket::whereKey($pocketId)->value('opening_balance');
+
+        $mutation = (float) Transaction::query()
+            ->where('pocket_id', $pocketId)
+            ->when($exceptTransactionId, fn ($q) => $q->whereKeyNot($exceptTransactionId))
+            ->when($exceptTransferGroup, fn ($q) => $q->where(fn ($q) => $q->whereNull('transfer_group')->orWhere('transfer_group', '!=', $exceptTransferGroup)))
+            ->selectRaw('COALESCE(SUM('.self::SIGNED_AMOUNT.'), 0) as total')
+            ->value('total');
+
+        return round($opening + $mutation, 2);
+    }
+
+    /**
+     * Rincian per pocket untuk satu rekening pada periode: saldo awal, masuk, keluar, saldo akhir.
+     *
+     * @return Collection<int, array{id:int, name:string, is_active:bool, opening_balance:float, income:float, expense:float, closing_balance:float}>
+     */
+    public function pocketSummary(int $cashAccountId, Carbon $start, Carbon $end): Collection
+    {
+        $before = Transaction::query()
+            ->where('cash_account_id', $cashAccountId)
+            ->whereNotNull('pocket_id')
+            ->whereDate('date', '<', $start)
+            ->selectRaw('pocket_id, COALESCE(SUM('.self::SIGNED_AMOUNT.'), 0) as total')
+            ->groupBy('pocket_id')
+            ->pluck('total', 'pocket_id');
+
+        $period = $this->periodQuery($start, $end, $cashAccountId)
+            ->whereNotNull('pocket_id')
+            ->selectRaw('pocket_id, transactions.type as type, SUM(transactions.amount) as total')
+            ->groupBy('pocket_id', 'transactions.type')
+            ->get();
+
+        return CashAccountPocket::where('cash_account_id', $cashAccountId)->orderBy('sort_order')->orderBy('id')->get()
+            ->map(function (CashAccountPocket $pocket) use ($before, $period) {
+                $opening = round((float) $pocket->opening_balance + (float) ($before[$pocket->id] ?? 0), 2);
+                $sum = fn (TransactionType $type) => round((float) $period
+                    ->filter(fn ($r) => (int) $r->pocket_id === $pocket->id && $this->typeValue($r->type) === $type->value)
+                    ->sum('total'), 2);
+                $income = $sum(TransactionType::Income);
+                $expense = $sum(TransactionType::Expense);
+
+                return [
+                    'id' => $pocket->id,
+                    'name' => $pocket->name,
+                    'is_active' => $pocket->is_active,
+                    'opening_balance' => $opening,
+                    'income' => $income,
+                    'expense' => $expense,
+                    'closing_balance' => round($opening + $income - $expense, 2),
+                ];
+            })
+            ->values();
+    }
+
+    /**
+     * Rekening ber-pocket hanya ikut bila diminta lewat $cashAccountId.
+     *
+     * @return Collection<int, array{id:int, code:string, name:string, type:string, balance:float}>
+     */
     public function balancesPerAccount(?int $cashAccountId = null): Collection
     {
         $mutations = $this->mutationsPerAccount();
 
-        return CashAccount::query()->when($cashAccountId, fn ($q) => $q->whereKey($cashAccountId))->orderBy('code')->get()->map(fn (CashAccount $account) => [
+        return CashAccount::query()->when($cashAccountId, fn ($q) => $q->whereKey($cashAccountId), fn ($q) => $q->where('has_pockets', false))->orderBy('code')->get()->map(fn (CashAccount $account) => [
             'id' => $account->id,
             'code' => $account->code,
             'name' => $account->name,
@@ -274,13 +348,20 @@ class FinanceReportService
     }
 
     /** Buku kas: saldo awal, daftar transaksi dengan saldo berjalan, saldo akhir. */
-    public function ledger(Carbon $start, Carbon $end, ?int $cashAccountId = null): array
+    public function ledger(Carbon $start, Carbon $end, ?int $cashAccountId = null, ?int $pocketId = null): array
     {
-        $opening = $this->balance($cashAccountId, $start);
+        $opening = $pocketId
+            ? round((float) CashAccountPocket::whereKey($pocketId)->value('opening_balance') + (float) Transaction::query()
+                ->where('pocket_id', $pocketId)
+                ->whereDate('date', '<', $start)
+                ->selectRaw('COALESCE(SUM('.self::SIGNED_AMOUNT.'), 0) as total')
+                ->value('total'), 2)
+            : $this->balance($cashAccountId, $start);
         $running = $opening;
 
         $rows = $this->periodQuery($start, $end, $cashAccountId)
-            ->with(['category:id,code,name', 'cashAccount:id,code,name'])
+            ->when($pocketId, fn ($q) => $q->where('transactions.pocket_id', $pocketId))
+            ->with(['category:id,code,name', 'cashAccount:id,code,name', 'pocket:id,name'])
             ->orderBy('date')
             ->orderBy('id')
             ->get()
@@ -296,6 +377,7 @@ class FinanceReportService
                     'counterparty' => $t->counterparty,
                     'category' => $t->category?->name,
                     'cash_account' => $t->cashAccount?->name,
+                    'pocket' => $t->pocket?->name,
                     'income' => $t->type === TransactionType::Income ? $amount : 0,
                     'expense' => $t->type === TransactionType::Expense ? $amount : 0,
                     'balance' => round($running, 2),
@@ -325,10 +407,14 @@ class FinanceReportService
         return $type instanceof TransactionType ? $type->value : (string) $type;
     }
 
+    /** Tanpa filter kas = "Semua kas": rekening ber-pocket (dana khusus) dikecualikan. */
     private function baseQuery(?int $cashAccountId = null): Builder
     {
-        return Transaction::query()
-            ->when($cashAccountId, fn ($q) => $q->where('transactions.cash_account_id', $cashAccountId));
+        return Transaction::query()->when(
+            $cashAccountId,
+            fn ($q) => $q->where('transactions.cash_account_id', $cashAccountId),
+            fn ($q) => $q->whereNotIn('transactions.cash_account_id', CashAccount::select('id')->where('has_pockets', true)),
+        );
     }
 
     private function periodQuery(Carbon $start, Carbon $end, ?int $cashAccountId = null): Builder

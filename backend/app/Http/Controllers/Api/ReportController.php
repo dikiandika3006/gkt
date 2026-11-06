@@ -11,6 +11,7 @@ use App\Services\FundRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
@@ -30,7 +31,7 @@ class ReportController extends Controller
 
         return response()->json([
             'period' => $this->periodArray($start, $end),
-            ...$this->report->ledger($start, $end, $cashAccountId),
+            ...$this->report->ledger($start, $end, $cashAccountId, $this->pocketId($request, $cashAccountId)),
         ]);
     }
 
@@ -81,11 +82,12 @@ class ReportController extends Controller
     private function exportCashFlow(Request $request, ExcelExportService $excel): StreamedResponse
     {
         [$start, $end, $cashAccountId] = $this->period($request);
-        $ledger = $this->report->ledger($start, $end, $cashAccountId);
+        $ledger = $this->report->ledger($start, $end, $cashAccountId, $this->pocketId($request, $cashAccountId));
 
         $rows = [['', '', 'Saldo awal', '', '', '', null, null, $ledger['opening_balance']]];
         foreach ($ledger['rows'] as $r) {
-            $rows[] = [$r['date'], $r['number'], $r['description'], (string) $r['counterparty'], (string) $r['category'], (string) $r['cash_account'], $r['income'], $r['expense'], $r['balance']];
+            $account = $r['pocket'] ? "{$r['cash_account']} · {$r['pocket']}" : (string) $r['cash_account'];
+            $rows[] = [$r['date'], $r['number'], $r['description'], (string) $r['counterparty'], (string) $r['category'], $account, $r['income'], $r['expense'], $r['balance']];
         }
         $rows[] = ['', '', 'Saldo akhir', '', '', '', null, null, $ledger['closing_balance']];
 
@@ -204,7 +206,20 @@ class ReportController extends Controller
             ...$totals,
             'closing_balance' => round($opening + $totals['change'], 2),
             'categories' => $this->report->byCategory($start, $end, $cashAccountId),
+            'pockets' => $cashAccountId && CashAccount::whereKey($cashAccountId)->value('has_pockets')
+                ? $this->report->pocketSummary($cashAccountId, $start, $end)
+                : [],
         ];
+    }
+
+    /** Filter pocket opsional (Buku Kas); pocket harus milik kas yang difilter. */
+    private function pocketId(Request $request, ?int $cashAccountId): ?int
+    {
+        $data = $request->validate([
+            'pocket_id' => ['nullable', 'integer', Rule::exists('cash_account_pockets', 'id')->where('cash_account_id', $cashAccountId)],
+        ], ['pocket_id.exists' => 'Pocket tidak ditemukan di rekening ini.']);
+
+        return isset($data['pocket_id']) ? (int) $data['pocket_id'] : null;
     }
 
     /** @return array{0: Carbon, 1: Carbon, 2: ?int} */
@@ -264,7 +279,7 @@ class ReportController extends Controller
 
     private function periodLabel(Carbon $start, Carbon $end, ?int $cashAccountId): string
     {
-        $account = $cashAccountId ? CashAccount::find($cashAccountId)?->name : 'Semua kas';
+        $account = $cashAccountId ? CashAccount::find($cashAccountId)?->name : 'Semua kas (tanpa rekening pocket)';
 
         return "Periode {$start->format('d/m/Y')} s/d {$end->format('d/m/Y')} · {$account}";
     }

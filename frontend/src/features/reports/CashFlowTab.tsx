@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 import { api } from '@/lib/api'
 import { formatDate, formatRupiah, toDateInput } from '@/lib/format'
 import type { CashFlowReport } from '@/types'
-import { CashAccountFilter, DateInput, Field, PrintTitle, ReportToolbar } from './components'
+import { CashAccountFilter, DateInput, Field, PocketFilter, PrintTitle, ReportToolbar } from './components'
 
 /** Buku kas dengan saldo berjalan (per kas atau gabungan). */
 export function CashFlowTab() {
@@ -14,8 +14,9 @@ export function CashFlowTab() {
     start_date: toDateInput(startOfMonth(new Date())),
     end_date: toDateInput(endOfMonth(new Date())),
     cash_account_id: '',
+    pocket_id: '',
   }))
-  const query = { ...params, cash_account_id: params.cash_account_id || undefined }
+  const query = { ...params, cash_account_id: params.cash_account_id || undefined, pocket_id: params.pocket_id || undefined }
 
   const { data } = useQuery({
     queryKey: ['reports', 'cash-flow', params],
@@ -31,7 +32,8 @@ export function CashFlowTab() {
         <Field label="Sampai">
           <DateInput value={params.end_date} onChange={(v) => setParams((p) => ({ ...p, end_date: v }))} />
         </Field>
-        <CashAccountFilter value={params.cash_account_id} onChange={(v) => setParams((p) => ({ ...p, cash_account_id: v }))} />
+        <CashAccountFilter value={params.cash_account_id} onChange={(v) => setParams((p) => ({ ...p, cash_account_id: v, pocket_id: '' }))} />
+        <PocketFilter cashAccountId={params.cash_account_id} value={params.pocket_id} onChange={(v) => setParams((p) => ({ ...p, pocket_id: v }))} />
       </ReportToolbar>
 
       <PrintTitle title="Buku Kas" subtitle={`${formatDate(params.start_date)} – ${formatDate(params.end_date)}`} />
@@ -63,6 +65,7 @@ export function CashFlowTab() {
                 <TableCell className="max-w-72">
                   <div className="truncate">{r.description}</div>
                   {r.counterparty && <div className="truncate text-xs text-muted-foreground">{r.counterparty}</div>}
+                  {r.pocket && !params.pocket_id && <div className="truncate text-xs text-muted-foreground">Pocket {r.pocket}</div>}
                 </TableCell>
                 <TableCell>{r.category}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.income ? formatRupiah(r.income) : '-'}</TableCell>
