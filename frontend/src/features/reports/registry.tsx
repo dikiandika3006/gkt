@@ -1,5 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
-import { BarChart3, BookOpen, CalendarRange, ClipboardList, FileText, ListTree } from 'lucide-react'
+import { BarChart3, BookOpen, CalendarRange, ClipboardList, FileText, Landmark, ListTree, Lock } from 'lucide-react'
 import type { LayoutDashboard } from 'lucide-react'
 import type { Module } from '@/types'
 
@@ -49,6 +49,24 @@ export const REPORTS: ReportEntry[] = [
     icon: BookOpen,
     module: 'reports',
     page: named(() => import('./CashFlowTab'), 'CashFlowTab'),
+  },
+  {
+    slug: 'rekonsiliasi',
+    label: 'Rekonsiliasi Bank',
+    description: 'Cocokkan saldo aplikasi dengan rekening koran / hitung fisik kas di akhir bulan',
+    section: 'Bulanan',
+    icon: Landmark,
+    module: 'reports',
+    page: lazy(() => import('./ReconciliationPage')),
+  },
+  {
+    slug: 'tutup-buku',
+    label: 'Tutup Buku',
+    description: 'Kunci bulan yang laporannya sudah diumumkan agar transaksinya tidak berubah',
+    section: 'Bulanan',
+    icon: Lock,
+    module: 'reports',
+    page: lazy(() => import('./PeriodLocksPage')),
   },
   {
     slug: 'sekretariat',

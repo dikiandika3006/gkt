@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Link } from 'react-router'
-import { ArrowLeftRight, ClipboardList, Download, Loader2, Paperclip, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { ArrowLeftRight, ClipboardList, Download, Loader2, Lock, Paperclip, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -245,7 +245,11 @@ export default function TransactionsPage() {
                 </TableCell>
                 {canWrite && (
                   <TableCell className="pr-4">
-                    {t.fund_report_item_id ? (
+                    {t.locked ? (
+                      <div className="flex justify-end pr-2" title="Bulan ini sudah ditutup buku (menu Laporan → Tutup Buku)">
+                        <Lock className="size-4 text-muted-foreground" aria-label="Sudah ditutup buku" />
+                      </div>
+                    ) : t.fund_report_item_id ? (
                       <div className="flex justify-end">
                         <Button size="icon-sm" variant="ghost" aria-label="Buka pengajuan" render={<Link to={`/fund-requests/${t.fund_request_id}`} />}>
                           <ClipboardList />

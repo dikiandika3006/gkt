@@ -21,6 +21,8 @@ const SUBJECTS = [
   { value: 'CashAccount', label: 'Kas & Bank' },
   { value: 'AppSetting', label: 'Setting' },
   { value: 'RoleCashAccount', label: 'Akses Kas' },
+  { value: 'PeriodLock', label: 'Tutup Buku' },
+  { value: 'BankReconciliation', label: 'Rekonsiliasi' },
 ]
 const ACTION: Record<ActivityLog['action'], { label: string; variant: 'secondary' | 'outline' | 'destructive' }> = {
   created: { label: 'Dibuat', variant: 'secondary' },

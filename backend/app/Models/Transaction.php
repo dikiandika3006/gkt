@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TransactionType;
 use App\Models\Concerns\LogsActivity;
+use App\Services\PeriodLockService;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,12 @@ class Transaction extends Model
         static::creating(function (Transaction $transaction) {
             $transaction->number ??= static::generateNumber($transaction->type, $transaction->date);
         });
+
+        // Tutup buku: tanggal lama maupun baru tidak boleh berada di bulan yang sudah dikunci.
+        $guard = fn (Transaction $t) => app(PeriodLockService::class)->ensureOpen($t->date, $t->getOriginal('date'));
+        static::saving($guard);
+        static::deleting($guard);
+        static::restoring($guard);
     }
 
     /** Format: KM-202610-0001 (nomor urut per jenis per bulan). */

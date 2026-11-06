@@ -123,6 +123,8 @@ export interface Transaction {
   recurring_expense_id: number | null
   recurring_period: string | null
   is_managed: boolean
+  /** Bulan transaksi sudah ditutup buku: tidak bisa diubah/dihapus. */
+  locked: boolean
   category?: Category
   cash_account?: CashAccount
   creator?: { id: number; name: string } | null
@@ -568,6 +570,34 @@ export interface AppSettings {
   report_signer_left_name: string | null
   report_signer_right_title: string | null
   report_signer_right_name: string | null
+}
+
+export interface PeriodLockMonth {
+  month: string
+  label: string
+  locked: boolean
+  locked_at: string | null
+  locked_by: string | null
+  notes: string | null
+  transactions: number
+  reconciled_accounts: number
+  closing_balance: number | null
+  is_future: boolean
+}
+
+export interface ReconciliationRow {
+  cash_account_id: number
+  name: string
+  type: CashAccountType
+  type_label: string
+  account_number: string | null
+  app_balance: number
+  id: number | null
+  statement_balance: number | null
+  difference: number | null
+  notes: string | null
+  reconciled_by: string | null
+  reconciled_at: string | null
 }
 
 export interface ReportHeader {

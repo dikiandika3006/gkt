@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BankImportController;
+use App\Http\Controllers\Api\BankReconciliationController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CashAccountController;
 use App\Http\Controllers\Api\CategoryController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\FundRequestController;
 use App\Http\Controllers\Api\InsightController;
 use App\Http\Controllers\Api\OfferingReportController;
 use App\Http\Controllers\Api\OfferingSettingController;
+use App\Http\Controllers\Api\PeriodLockController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RecurringExpenseController;
 use App\Http\Controllers\Api\ReportController;
@@ -116,7 +118,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/monthly', [ReportController::class, 'monthly']);
         Route::get('/reports/categories', [ReportController::class, 'categories']);
         Route::get('/reports/monthly-statement', [ReportController::class, 'monthlyStatement']);
+        Route::get('/period-locks', [PeriodLockController::class, 'index']);
+        Route::get('/bank-reconciliations', [BankReconciliationController::class, 'index']);
     });
+    // Tutup buku & rekonsiliasi: diisi admin/bendahara; membuka kembali bulan hanya admin.
+    Route::middleware('role:admin,bendahara')->group(function () {
+        Route::post('/period-locks', [PeriodLockController::class, 'store']);
+        Route::post('/bank-reconciliations', [BankReconciliationController::class, 'store']);
+        Route::delete('/bank-reconciliations/{bank_reconciliation}', [BankReconciliationController::class, 'destroy']);
+    });
+    Route::delete('/period-locks/{month}', [PeriodLockController::class, 'destroy'])->middleware('role:admin')->where('month', '\d{4}-\d{2}');
     Route::get('/reports/secretariat', [ReportController::class, 'secretariat'])->middleware('permission:report_secretariat,view');
     Route::get('/reports/{name}/export', [ReportController::class, 'export'])
         ->whereIn('name', ['cash-flow', 'monthly', 'categories', 'secretariat', 'monthly-statement'])
