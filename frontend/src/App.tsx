@@ -21,6 +21,8 @@ const ReportsPage = lazy(() => import('@/features/reports/ReportsPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
 const ActivityLogsPage = lazy(() => import('@/features/activity-logs/ActivityLogsPage'))
 const PermissionsPage = lazy(() => import('@/features/permissions/PermissionsPage'))
+const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'))
+const AboutPage = lazy(() => import('@/features/settings/AboutPage'))
 
 export default function App() {
   return (
@@ -70,6 +72,8 @@ export default function App() {
                 <Route path="users" element={<UsersPage />} />
                 <Route path="activity-logs" element={<ActivityLogsPage />} />
                 <Route path="permissions" element={<PermissionsPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="about" element={<AboutPage />} />
               </Route>
             </Route>
           </Route>

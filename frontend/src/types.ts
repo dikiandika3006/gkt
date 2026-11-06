@@ -176,7 +176,12 @@ export interface PeriodTotals {
 export interface DashboardData {
   period: Period
   month: PeriodTotals
+  /** Saldo kartu (mengikuti Setting "Rekening di Dashboard"). */
   total_balance: number
+  /** Saldo awal bulan untuk cakupan yang sama dengan total_balance. */
+  balance_opening: number
+  /** cash_account_id null = semua kas & bank. */
+  balance_scope: { cash_account_id: number | null; name: string | null }
   balances: { id: number; code: string; name: string; type: CashAccountType; balance: number }[]
   trend: { month: string; income: number; expense: number }[]
   resilience: { balance: number; average_expense: number; months: number | null }
@@ -492,4 +497,10 @@ export interface OfferingSettings {
   funds: OfferingFundSetting[]
   schedule: Record<string, number | null>
   services: string[]
+}
+
+/** Menu Setting (admin). */
+export interface AppSettings {
+  /** null = semua kas & bank tampil di kartu saldo dashboard. */
+  dashboard_cash_account_id: number | null
 }

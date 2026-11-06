@@ -19,6 +19,7 @@ const SUBJECTS = [
   { value: 'RecurringExpense', label: 'Biaya Rutin' },
   { value: 'Category', label: 'Kategori' },
   { value: 'CashAccount', label: 'Kas & Bank' },
+  { value: 'AppSetting', label: 'Setting' },
 ]
 const ACTION: Record<ActivityLog['action'], { label: string; variant: 'secondary' | 'outline' | 'destructive' }> = {
   created: { label: 'Dibuat', variant: 'secondary' },

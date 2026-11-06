@@ -48,11 +48,11 @@ class FinanceReportService
     }
 
     /** @return Collection<int, array{id:int, code:string, name:string, type:string, balance:float}> */
-    public function balancesPerAccount(): Collection
+    public function balancesPerAccount(?int $cashAccountId = null): Collection
     {
         $mutations = $this->mutationsPerAccount();
 
-        return CashAccount::query()->orderBy('code')->get()->map(fn (CashAccount $account) => [
+        return CashAccount::query()->when($cashAccountId, fn ($q) => $q->whereKey($cashAccountId))->orderBy('code')->get()->map(fn (CashAccount $account) => [
             'id' => $account->id,
             'code' => $account->code,
             'name' => $account->name,

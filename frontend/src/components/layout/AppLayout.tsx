@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { BarChart3, CalendarCheck, ClipboardList, FolderTree, HandCoins, History, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Settings2, ShieldCheck, Users, Wallet } from 'lucide-react'
+import { BarChart3, CalendarCheck, ClipboardList, FolderTree, HandCoins, History, Info, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Settings, Settings2, ShieldCheck, Users, Wallet } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -54,6 +54,13 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { to: '/users', label: 'Pengguna', icon: Users, roles: ['admin'] },
       { to: '/activity-logs', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
       { to: '/permissions', label: 'Hak Akses', icon: ShieldCheck, roles: ['admin'] },
+    ],
+  },
+  {
+    label: 'Setting',
+    items: [
+      { to: '/settings', label: 'Setting', icon: Settings, roles: ['admin'] },
+      { to: '/about', label: 'About', icon: Info, roles: ['admin'] },
     ],
   },
 ]

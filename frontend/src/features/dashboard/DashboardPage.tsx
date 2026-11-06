@@ -72,14 +72,13 @@ function ChurchDashboard() {
         ) : (
           <>
             <StatTile
-              label="Total Saldo"
+              label={data.balance_scope.name ? `Saldo ${data.balance_scope.name}` : 'Total Saldo'}
               value={data.total_balance}
               icon={Landmark}
               to="/cash-accounts"
               valueClass={data.total_balance < 0 ? 'text-destructive' : undefined}
               delta={(() => {
-                const opening = data.total_balance - data.month.change
-                const change = percentChange(data.total_balance, opening)
+                const change = percentChange(data.total_balance, data.balance_opening)
                 return { change, tone: deltaTone(change, true), against: 'awal bulan' }
               })()}
             />
@@ -167,7 +166,9 @@ function ChurchDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Saldo per Kas</CardTitle>
-            <CardDescription>Posisi saat ini · klik untuk buku kas</CardDescription>
+            <CardDescription>
+              {data?.balance_scope.name ? `Hanya ${data.balance_scope.name} (Setting)` : 'Posisi saat ini'} · klik untuk buku kas
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
             {data?.balances.map((b) => {

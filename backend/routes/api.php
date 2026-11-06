@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\OfferingSettingController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RecurringExpenseController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\UserController;
@@ -132,5 +133,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
         Route::get('/permissions', [PermissionController::class, 'index']);
         Route::put('/permissions', [PermissionController::class, 'update']);
+        Route::get('/settings', [SettingController::class, 'show']);
+        Route::put('/settings', [SettingController::class, 'update']);
     });
 });
