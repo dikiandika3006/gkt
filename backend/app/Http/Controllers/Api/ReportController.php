@@ -79,7 +79,11 @@ class ReportController extends Controller
 
     public function export(Request $request, ExcelExportService $excel, string $name): StreamedResponse
     {
-        $module = $name === 'secretariat' ? Module::ReportSecretariat : Module::Reports;
+        $module = match ($name) {
+            'secretariat' => Module::ReportSecretariat,
+            'donors' => Module::ReportDonors,
+            default => Module::Reports,
+        };
         abort_unless($request->user()->hasPermission($module), 403, 'Anda tidak memiliki akses untuk aksi ini.');
 
         return match ($name) {
@@ -88,7 +92,7 @@ class ReportController extends Controller
             'categories' => $this->exportCategories($request, $excel),
             'secretariat' => $this->exportSecretariat($request, $excel),
             'monthly-statement' => $this->exportMonthlyStatement($request, $excel),
-            'budget', 'fund-position', 'deposits-loans' => app(ExtendedReportController::class)->export($request, $excel, $name),
+            'budget', 'fund-position', 'deposits-loans', 'comparison', 'offering-trend', 'donors', 'annual' => app(ExtendedReportController::class)->export($request, $excel, $name),
             default => abort(404, 'Laporan tidak dikenal.'),
         };
     }

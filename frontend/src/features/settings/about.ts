@@ -14,6 +14,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-09',
+    title: 'Menu Laporan baru & 10 laporan tambahan',
+    changes: [
+      'Laporan kini menjadi grup menu sendiri (bisa dilipat), dikelompokkan Bulanan, Dana, Analisa, Tahunan — satu laporan satu halaman.',
+      'Laporan Bulanan siap cetak dengan kop & tanda tangan; nama gereja dan penandatangan diatur di Setting → Laporan Cetak.',
+      'Tutup Buku: bulan yang sudah ditutup tidak bisa ditambah/diubah/dihapus transaksinya; ditutup admin/bendahara, dibuka kembali hanya admin.',
+      'Rekonsiliasi Bank: cocokkan saldo aplikasi dengan rekening koran / hitung fisik kas tiap akhir bulan.',
+      'Posisi Dana (dana bebas vs dana khusus, titipan, pinjaman) dan kartu Titipan & Pinjaman per nama.',
+      'Realisasi Anggaran per bulan & kumulatif, Perbandingan Tahunan, dan Tren Persembahan mingguan.',
+      'Rekap per Pemberi (data pribadi): modul Hak Akses baru, default hanya admin.',
+      'LPJ Tahunan untuk Rapat Jemaat: dokumen cetak + Excel 6 sheet.',
+    ],
+  },
+  {
     date: '2026-11-07',
     title: 'Backup & Restore database',
     changes: [
@@ -129,6 +143,13 @@ export const RULES: Record<string, string[]> = {
   'Rekap Persembahan': [
     'Rekap persembahan dibuat per minggu dan bisa dicocokkan (crosscheck) dengan transaksi pada periode persembahan.',
     'Pos persembahan khusus mengikuti jadwal Minggu ke-N di menu Pos Persembahan.',
+  ],
+  'Laporan & Tutup Buku': [
+    'Laporan "Semua kas" = kas umum; rekening ber-pocket (dana khusus) dilaporkan terpisah per pocket.',
+    'Bulan yang sudah ditutup buku tidak bisa ditambah/diubah/dihapus transaksinya lewat jalur mana pun (form, mutasi antar kas, import, LPJ, rekap persembahan). Menutup: admin/bendahara; membuka kembali: admin.',
+    'Rekonsiliasi diisi per kas per akhir bulan; selisih ≠ 0 berarti ada transaksi yang belum/salah dicatat.',
+    'Dana bebas = total uang − dana khusus − titipan belum disalurkan − utang pinjaman.',
+    'Rekap per Pemberi berisi data pribadi; hanya untuk role yang diberi hak "Rekap per Pemberi" (default admin).',
   ],
   'Dashboard': [
     'Total Saldo dan Saldo per Kas mengikuti Setting "Rekening di Dashboard" (Semua atau satu kas/bank).',

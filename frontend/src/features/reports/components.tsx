@@ -57,6 +57,22 @@ export function DateInput({ value, onChange, type = 'date' }: { value: string; o
   return <Input type={type} value={value} onChange={(e) => e.target.value && onChange(e.target.value)} className="w-40" />
 }
 
+export function YearInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <Input
+      type="number"
+      min={2000}
+      max={2100}
+      value={value}
+      onChange={(e) => {
+        const v = Number(e.target.value)
+        if (v >= 2000 && v <= 2100) onChange(v)
+      }}
+      className="w-28"
+    />
+  )
+}
+
 export function CashAccountFilter({ value, onChange, allowAll = true, onlyCash = false }: { value: string; onChange: (v: string) => void; allowAll?: boolean; onlyCash?: boolean }) {
   const { data: cashAccounts = [] } = useCashAccounts()
   const options = cashAccounts.filter((c) => !onlyCash || c.type === 'cash').map((c) => ({ value: String(c.id), label: c.name }))

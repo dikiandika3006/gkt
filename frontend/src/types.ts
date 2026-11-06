@@ -30,6 +30,7 @@ export type Module =
   | 'fund_requests'
   | 'reports'
   | 'report_secretariat'
+  | 'report_donors'
   | 'categories'
   | 'cash_accounts'
 export type PermissionLevel = 'none' | 'view' | 'manage'
@@ -479,6 +480,45 @@ export interface DepositLoanCategory {
     closing: number
     transactions: { id: number; date: string; number: string; description: string; cash_account: string | null; income: number; expense: number }[]
   }[]
+}
+
+export interface YearComparison {
+  year: number
+  previous_year: number
+  months: { month: number; income: number; expense: number; prev_income: number; prev_expense: number }[]
+  totals: { income: number; expense: number; prev_income: number; prev_expense: number }
+  groups: Record<TransactionType, { group: string; total: number; prev_total: number }[]>
+}
+
+export interface OfferingTrend {
+  period: Period
+  sections: { key: string; label: string }[]
+  weeks: ({ date: string; total: number } & Record<string, number | string>)[]
+  totals: Record<string, number>
+  average: number
+}
+
+export interface DonorRecap {
+  year: number
+  rows: { name: string; months: Record<string, number>; perpuluhan: number; syukur: number; total: number; count: number }[]
+  totals: { perpuluhan: number; syukur: number; total: number; donors: number }
+}
+
+export interface AnnualReport {
+  year: number
+  as_of: string
+  header: ReportHeader
+  summary: {
+    opening_balance: number
+    closing_balance: number
+    months: MonthlyReport['months']
+    income: MatrixGroup[]
+    expense: MatrixGroup[]
+  }
+  budget: BudgetMonthlyReport
+  fund_position: FundPosition
+  pocket_accounts: { id: number; name: string; pockets: PocketSummary[] }[]
+  deposits_loans: DepositLoanCategory[]
 }
 
 export type InsightSeverity = 'danger' | 'warning' | 'info' | 'success'

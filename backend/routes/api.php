@@ -122,6 +122,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/budget', [ExtendedReportController::class, 'budget']);
         Route::get('/reports/fund-position', [ExtendedReportController::class, 'fundPosition']);
         Route::get('/reports/deposits-loans', [ExtendedReportController::class, 'depositsLoans']);
+        Route::get('/reports/comparison', [ExtendedReportController::class, 'comparison']);
+        Route::get('/reports/offering-trend', [ExtendedReportController::class, 'offeringTrend']);
+        Route::get('/reports/annual', [ExtendedReportController::class, 'annual']);
         Route::get('/period-locks', [PeriodLockController::class, 'index']);
         Route::get('/bank-reconciliations', [BankReconciliationController::class, 'index']);
     });
@@ -133,9 +136,10 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::delete('/period-locks/{month}', [PeriodLockController::class, 'destroy'])->middleware('role:admin')->where('month', '\d{4}-\d{2}');
     Route::get('/reports/secretariat', [ReportController::class, 'secretariat'])->middleware('permission:report_secretariat,view');
+    Route::get('/reports/donors', [ExtendedReportController::class, 'donors'])->middleware('permission:report_donors,view');
     Route::get('/reports/{name}/export', [ReportController::class, 'export'])
-        ->whereIn('name', ['cash-flow', 'monthly', 'categories', 'secretariat', 'monthly-statement', 'budget', 'fund-position', 'deposits-loans'])
-        ->middleware('permission:reports|report_secretariat,view');
+        ->whereIn('name', ['cash-flow', 'monthly', 'categories', 'secretariat', 'monthly-statement', 'budget', 'fund-position', 'deposits-loans', 'comparison', 'offering-trend', 'donors', 'annual'])
+        ->middleware('permission:reports|report_secretariat|report_donors,view');
 
     // Master data.
     Route::get('/categories/next-code', [CategoryController::class, 'nextCode'])->middleware('permission:categories,manage');

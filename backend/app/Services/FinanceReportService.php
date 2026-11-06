@@ -578,6 +578,51 @@ class FinanceReportService
         })->filter(fn ($c) => $c['people']->isNotEmpty())->sortBy('code')->values();
     }
 
+    /**
+     * Perbandingan tahun ini vs tahun lalu (kas umum, operasional): per bulan dan per kelompok kategori.
+     */
+    public function yearComparison(int $year): array
+    {
+        $build = fn (int $y) => $this->monthlyMatrix(Carbon::create($y, 1, 1)->startOfDay(), Carbon::create($y, 12, 31)->endOfDay());
+        $current = $build($year);
+        $previous = $build($year - 1);
+
+        $months = collect(range(0, 11))->map(fn (int $i) => [
+            'month' => $i + 1,
+            'income' => $current['months'][$i]['income'],
+            'expense' => $current['months'][$i]['expense'],
+            'prev_income' => $previous['months'][$i]['income'],
+            'prev_expense' => $previous['months'][$i]['expense'],
+        ]);
+
+        $groups = function (string $type) use ($current, $previous) {
+            $operational = fn (Collection $g) => $g->where('nature', CategoryNature::Operational->value)->pluck('total', 'group');
+            $now = $operational($current[$type]);
+            $before = $operational($previous[$type]);
+
+            return $now->keys()->merge($before->keys())->unique()->map(fn (string $group) => [
+                'group' => $group,
+                'total' => round((float) ($now[$group] ?? 0), 2),
+                'prev_total' => round((float) ($before[$group] ?? 0), 2),
+            ])->sortByDesc(fn ($g) => max($g['total'], $g['prev_total']))->values();
+        };
+
+        $sum = fn (string $key) => round((float) $months->sum($key), 2);
+
+        return [
+            'year' => $year,
+            'previous_year' => $year - 1,
+            'months' => $months,
+            'totals' => [
+                'income' => $sum('income'),
+                'expense' => $sum('expense'),
+                'prev_income' => $sum('prev_income'),
+                'prev_expense' => $sum('prev_expense'),
+            ],
+            'groups' => ['income' => $groups('income'), 'expense' => $groups('expense')],
+        ];
+    }
+
     /** @return Collection<int, string> daftar 'Y-m' dari $start s/d $end */
     public function monthKeys(Carbon $start, Carbon $end): Collection
     {

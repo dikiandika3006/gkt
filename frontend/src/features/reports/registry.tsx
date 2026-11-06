@@ -1,5 +1,21 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
-import { BarChart3, BookOpen, CalendarRange, ClipboardList, FileText, HandHelping, Landmark, ListTree, Lock, Scale, Target } from 'lucide-react'
+import {
+  BarChart3,
+  BookMarked,
+  BookOpen,
+  CalendarRange,
+  ClipboardList,
+  FileText,
+  HandCoins,
+  HandHelping,
+  Landmark,
+  ListTree,
+  Lock,
+  Scale,
+  Target,
+  TrendingUp,
+  UserRound,
+} from 'lucide-react'
 import type { LayoutDashboard } from 'lucide-react'
 import type { Module } from '@/types'
 
@@ -121,6 +137,42 @@ export const REPORTS: ReportEntry[] = [
     icon: BarChart3,
     module: 'reports',
     page: named(() => import('./CategoryRankingTab'), 'CategoryRankingTab'),
+  },
+  {
+    slug: 'perbandingan',
+    label: 'Perbandingan Tahunan',
+    description: 'Penerimaan & pengeluaran tahun ini dibanding tahun lalu, per bulan dan per kelompok',
+    section: 'Analisa',
+    icon: TrendingUp,
+    module: 'reports',
+    page: lazy(() => import('./ComparisonPage')),
+  },
+  {
+    slug: 'tren-persembahan',
+    label: 'Tren Persembahan',
+    description: 'Persembahan per minggu per bagian (ibadah, syukur, perpuluhan, lain) dari Rekap Persembahan',
+    section: 'Analisa',
+    icon: HandCoins,
+    module: 'reports',
+    page: lazy(() => import('./OfferingTrendPage')),
+  },
+  {
+    slug: 'pemberi',
+    label: 'Rekap per Pemberi',
+    description: 'Persembahan syukur & perpuluhan per nama jemaat per bulan — data pribadi',
+    section: 'Analisa',
+    icon: UserRound,
+    module: 'report_donors',
+    page: lazy(() => import('./DonorsPage')),
+  },
+  {
+    slug: 'lpj-tahunan',
+    label: 'LPJ Tahunan',
+    description: 'Laporan pertanggungjawaban keuangan setahun untuk Rapat Jemaat, siap cetak',
+    section: 'Tahunan',
+    icon: BookMarked,
+    module: 'reports',
+    page: lazy(() => import('./AnnualPage')),
   },
 ]
 
