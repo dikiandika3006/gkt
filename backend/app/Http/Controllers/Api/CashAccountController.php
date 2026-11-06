@@ -6,18 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CashAccountRequest;
 use App\Http\Resources\CashAccountResource;
 use App\Models\CashAccount;
+use App\Services\FinanceReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CashAccountController extends Controller
 {
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, FinanceReportService $report): AnonymousResourceCollection
     {
         $accounts = CashAccount::query()
             ->when($request->boolean('active_only'), fn ($q) => $q->where('is_active', true))
             ->orderBy('code')
             ->get();
+
+        $mutations = $report->mutationsPerAccount();
+        $accounts->each(fn (CashAccount $account) => $account->setAttribute(
+            'current_balance',
+            round((float) $account->opening_balance + (float) ($mutations[$account->id] ?? 0), 2),
+        ));
 
         return CashAccountResource::collection($accounts);
     }
