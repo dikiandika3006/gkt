@@ -462,6 +462,122 @@ class FinanceReportService
         ];
     }
 
+    /**
+     * Posisi dana per tanggal: total uang di semua kas, dipilah menjadi dana khusus (rekening ber-pocket),
+     * titipan yang belum disalurkan, utang pinjaman, dan sisanya = dana bebas (operasional).
+     * Pinjaman bersih negatif = uang gereja dipinjamkan (piutang, ditampilkan sebagai informasi).
+     */
+    public function fundPosition(Carbon $date): array
+    {
+        $after = $date->copy()->addDay()->startOfDay();
+        $accounts = CashAccount::orderBy('code')->get();
+        $balances = $accounts->map(fn (CashAccount $a) => [
+            'id' => $a->id,
+            'name' => $a->name,
+            'type' => $a->type->value,
+            'has_pockets' => (bool) $a->has_pockets,
+            'is_active' => (bool) $a->is_active,
+            'balance' => $this->balance($a->id, $after),
+        ])->filter(fn ($a) => $a['is_active'] || $a['balance'] != 0)->values();
+
+        // Titipan & pinjaman bersih (masuk − keluar) per kategori, hanya kas umum (rekening ber-pocket sudah dipisah utuh).
+        $nonOperational = $this->baseQuery()
+            ->whereDate('transactions.date', '<', $after)
+            ->join('categories', 'categories.id', '=', 'transactions.category_id')
+            ->whereIn('categories.nature', [CategoryNature::Titipan->value, CategoryNature::Pinjaman->value])
+            ->selectRaw('categories.id, categories.code, categories.name, categories.nature, COALESCE(SUM('.self::SIGNED_AMOUNT.'), 0) as total')
+            ->groupBy('categories.id', 'categories.code', 'categories.name', 'categories.nature')
+            ->orderBy('categories.code')
+            ->get()
+            ->map(fn ($r) => ['code' => $r->code, 'name' => $r->name, 'nature' => $r->nature, 'net' => round((float) $r->total, 2)])
+            ->filter(fn ($r) => $r['net'] != 0)
+            ->values();
+
+        $total = round((float) $balances->sum('balance'), 2);
+        $special = round((float) $balances->where('has_pockets', true)->sum('balance'), 2);
+        $deposits = round((float) $nonOperational->where('nature', CategoryNature::Titipan->value)->sum('net'), 2);
+        $loanNet = round((float) $nonOperational->where('nature', CategoryNature::Pinjaman->value)->sum('net'), 2);
+        $debt = max(0.0, $loanNet);
+
+        return [
+            'date' => $date->toDateString(),
+            'total' => $total,
+            'special_funds' => $special,
+            'deposits' => $deposits,
+            'loan_debt' => $debt,
+            'loan_receivable' => max(0.0, -$loanNet),
+            'free_funds' => round($total - $special - $deposits - $debt, 2),
+            'accounts' => $balances,
+            'pockets' => $accounts->where('has_pockets', true)->values()->map(fn (CashAccount $a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'pockets' => $this->pocketSummary($a->id, $date->copy()->startOfDay(), $date->copy()->endOfDay())
+                    ->map(fn ($p) => ['id' => $p['id'], 'name' => $p['name'], 'balance' => $p['closing_balance']])->values(),
+            ]),
+            'non_operational' => $nonOperational,
+        ];
+    }
+
+    /**
+     * Titipan & pinjaman per kategori dan per nama (counterparty): saldo awal, masuk, keluar, sisa, rincian periode.
+     * Semua kas ikut (termasuk rekening ber-pocket), nama kas ditampilkan per transaksi.
+     */
+    public function depositsLoans(Carbon $start, Carbon $end): Collection
+    {
+        $rows = Transaction::query()
+            ->join('categories', 'categories.id', '=', 'transactions.category_id')
+            ->whereIn('categories.nature', [CategoryNature::Titipan->value, CategoryNature::Pinjaman->value])
+            ->whereDate('transactions.date', '<=', $end)
+            ->with(['cashAccount:id,name', 'pocket:id,name'])
+            ->select('transactions.*', 'categories.code as category_code', 'categories.name as category_name', 'categories.nature as category_nature')
+            ->orderBy('transactions.date')
+            ->orderBy('transactions.id')
+            ->get();
+
+        $startDate = $start->toDateString();
+
+        return $rows->groupBy('category_id')->map(function (Collection $catRows) use ($startDate) {
+            $first = $catRows->first();
+            $people = $catRows->groupBy(fn (Transaction $t) => trim((string) $t->counterparty))->map(function (Collection $items, string $name) use ($startDate) {
+                $signed = fn (Transaction $t) => $t->type === TransactionType::Income ? (float) $t->amount : -(float) $t->amount;
+                $before = $items->filter(fn (Transaction $t) => $t->date->toDateString() < $startDate);
+                $period = $items->filter(fn (Transaction $t) => $t->date->toDateString() >= $startDate);
+                $opening = round($before->sum($signed), 2);
+                $in = round((float) $period->where('type', TransactionType::Income)->sum('amount'), 2);
+                $out = round((float) $period->where('type', TransactionType::Expense)->sum('amount'), 2);
+
+                return [
+                    'name' => $name !== '' ? $name : '(tanpa nama)',
+                    'opening' => $opening,
+                    'income' => $in,
+                    'expense' => $out,
+                    'closing' => round($opening + $in - $out, 2),
+                    'transactions' => $period->map(fn (Transaction $t) => [
+                        'id' => $t->id,
+                        'date' => $t->date->toDateString(),
+                        'number' => $t->number,
+                        'description' => $t->description,
+                        'cash_account' => $t->pocket ? "{$t->cashAccount?->name} · {$t->pocket->name}" : $t->cashAccount?->name,
+                        'income' => $t->type === TransactionType::Income ? (float) $t->amount : 0,
+                        'expense' => $t->type === TransactionType::Expense ? (float) $t->amount : 0,
+                    ])->values(),
+                ];
+            })->filter(fn ($p) => $p['opening'] != 0 || $p['transactions']->isNotEmpty())->sortBy('name')->values();
+
+            return [
+                'category_id' => (int) $first->category_id,
+                'code' => $first->category_code,
+                'name' => $first->category_name,
+                'nature' => $first->category_nature,
+                'opening' => round((float) $people->sum('opening'), 2),
+                'income' => round((float) $people->sum('income'), 2),
+                'expense' => round((float) $people->sum('expense'), 2),
+                'closing' => round((float) $people->sum('closing'), 2),
+                'people' => $people,
+            ];
+        })->filter(fn ($c) => $c['people']->isNotEmpty())->sortBy('code')->values();
+    }
+
     /** @return Collection<int, string> daftar 'Y-m' dari $start s/d $end */
     public function monthKeys(Carbon $start, Carbon $end): Collection
     {

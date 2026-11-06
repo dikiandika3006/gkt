@@ -88,6 +88,7 @@ class ReportController extends Controller
             'categories' => $this->exportCategories($request, $excel),
             'secretariat' => $this->exportSecretariat($request, $excel),
             'monthly-statement' => $this->exportMonthlyStatement($request, $excel),
+            'budget', 'fund-position', 'deposits-loans' => app(ExtendedReportController::class)->export($request, $excel, $name),
             default => abort(404, 'Laporan tidak dikenal.'),
         };
     }

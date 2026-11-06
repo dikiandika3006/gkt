@@ -1,5 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
-import { BarChart3, BookOpen, CalendarRange, ClipboardList, FileText, Landmark, ListTree, Lock } from 'lucide-react'
+import { BarChart3, BookOpen, CalendarRange, ClipboardList, FileText, HandHelping, Landmark, ListTree, Lock, Scale, Target } from 'lucide-react'
 import type { LayoutDashboard } from 'lucide-react'
 import type { Module } from '@/types'
 
@@ -69,6 +69,24 @@ export const REPORTS: ReportEntry[] = [
     page: lazy(() => import('./PeriodLocksPage')),
   },
   {
+    slug: 'posisi-dana',
+    label: 'Posisi Dana',
+    description: 'Dari total uang di kas & bank, berapa yang terikat (dana khusus, titipan, pinjaman) dan berapa yang bebas dipakai',
+    section: 'Dana',
+    icon: Scale,
+    module: 'reports',
+    page: lazy(() => import('./FundPositionPage')),
+  },
+  {
+    slug: 'titipan-pinjaman',
+    label: 'Titipan & Pinjaman',
+    description: 'Kartu titipan & pinjaman per nama: masuk, disalurkan/dikembalikan, sisa',
+    section: 'Dana',
+    icon: HandHelping,
+    module: 'reports',
+    page: lazy(() => import('./DepositsLoansPage')),
+  },
+  {
     slug: 'sekretariat',
     label: 'Kas Sekretariat',
     description: 'Pemakaian dana Kas Sekretariat per pengajuan, kategori & nota',
@@ -85,6 +103,15 @@ export const REPORTS: ReportEntry[] = [
     icon: ListTree,
     module: 'reports',
     page: named(() => import('./SummaryTab'), 'SummaryTab'),
+  },
+  {
+    slug: 'realisasi-anggaran',
+    label: 'Realisasi Anggaran',
+    description: 'Anggaran vs realisasi per kategori, bulan ini dan kumulatif sejak Januari',
+    section: 'Analisa',
+    icon: Target,
+    module: 'reports',
+    page: lazy(() => import('./BudgetReportPage')),
   },
   {
     slug: 'analisa-kategori',

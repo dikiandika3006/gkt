@@ -442,6 +442,45 @@ export interface BudgetReport {
   totals: { expense_budget: number; expense_actual: number; income_budget: number; income_actual: number }
 }
 
+export interface BudgetMonthlyReport {
+  year: number
+  month: string
+  rows: (BudgetRow & { budget_to_date: number; month_actual: number })[]
+  totals: Record<TransactionType, { amount: number; budget_to_date: number; month_actual: number; actual: number; remaining: number }>
+}
+
+export interface FundPosition {
+  date: string
+  total: number
+  special_funds: number
+  deposits: number
+  loan_debt: number
+  loan_receivable: number
+  free_funds: number
+  accounts: { id: number; name: string; type: CashAccountType; has_pockets: boolean; balance: number }[]
+  pockets: { id: number; name: string; pockets: { id: number; name: string; balance: number }[] }[]
+  non_operational: { code: string; name: string; nature: CategoryNature; net: number }[]
+}
+
+export interface DepositLoanCategory {
+  category_id: number
+  code: string
+  name: string
+  nature: CategoryNature
+  opening: number
+  income: number
+  expense: number
+  closing: number
+  people: {
+    name: string
+    opening: number
+    income: number
+    expense: number
+    closing: number
+    transactions: { id: number; date: string; number: string; description: string; cash_account: string | null; income: number; expense: number }[]
+  }[]
+}
+
 export type InsightSeverity = 'danger' | 'warning' | 'info' | 'success'
 
 export interface Insight {

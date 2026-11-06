@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CounterpartyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DatabaseBackupController;
+use App\Http\Controllers\Api\ExtendedReportController;
 use App\Http\Controllers\Api\FundRequestController;
 use App\Http\Controllers\Api\InsightController;
 use App\Http\Controllers\Api\OfferingReportController;
@@ -118,6 +119,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/monthly', [ReportController::class, 'monthly']);
         Route::get('/reports/categories', [ReportController::class, 'categories']);
         Route::get('/reports/monthly-statement', [ReportController::class, 'monthlyStatement']);
+        Route::get('/reports/budget', [ExtendedReportController::class, 'budget']);
+        Route::get('/reports/fund-position', [ExtendedReportController::class, 'fundPosition']);
+        Route::get('/reports/deposits-loans', [ExtendedReportController::class, 'depositsLoans']);
         Route::get('/period-locks', [PeriodLockController::class, 'index']);
         Route::get('/bank-reconciliations', [BankReconciliationController::class, 'index']);
     });
@@ -130,7 +134,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/period-locks/{month}', [PeriodLockController::class, 'destroy'])->middleware('role:admin')->where('month', '\d{4}-\d{2}');
     Route::get('/reports/secretariat', [ReportController::class, 'secretariat'])->middleware('permission:report_secretariat,view');
     Route::get('/reports/{name}/export', [ReportController::class, 'export'])
-        ->whereIn('name', ['cash-flow', 'monthly', 'categories', 'secretariat', 'monthly-statement'])
+        ->whereIn('name', ['cash-flow', 'monthly', 'categories', 'secretariat', 'monthly-statement', 'budget', 'fund-position', 'deposits-loans'])
         ->middleware('permission:reports|report_secretariat,view');
 
     // Master data.
