@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\CashAccount;
 use App\Models\CashAccountPocket;
 use App\Models\Category;
+use App\Models\Transaction;
 use App\Models\User;
 use Database\Seeders\ChartOfAccountsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -158,5 +159,34 @@ class BankImportSpreadsheetTest extends TestCase
         ])->assertOk()->json();
         $this->assertSame(['income', 'expense'], array_column($manual['rows'], 'type'));
         $this->assertNull($manual['detection']['mapping']['direction']);
+    }
+
+    public function test_mutation_export_can_be_imported_back_with_account_category_and_pocket(): void
+    {
+        $category = Category::where('name', 'Persembahan Syukur')->first();
+        $transfer = Category::where('nature', 'transfer')->where('type', 'expense')->first();
+        $base = ['cash_account_id' => $this->account->id, 'date' => '2026-10-05'];
+        Transaction::factory()->create([...$base, 'category_id' => $category->id, 'pocket_id' => $this->kendaraan->id,
+            'amount' => 250_000, 'counterparty' => 'Bpk Andi', 'description' => 'Persembahan kendaraan Oktober']);
+        Transaction::factory()->create([...$base, 'type' => 'expense', 'category_id' => $transfer->id, 'pocket_id' => $this->pembangunan->id,
+            'amount' => 100_000, 'description' => 'Pindah dana']);
+
+        $content = $this->get("/api/transactions/export?cash_account_id={$this->account->id}")->assertOk()->streamedContent();
+        Transaction::query()->forceDelete();
+        $path = tempnam(sys_get_temp_dir(), 'exp').'.xlsx';
+        file_put_contents($path, $content);
+
+        $preview = $this->postJson('/api/transactions/import/preview', ['file' => new UploadedFile($path, 'transaksi.xlsx', null, null, true)])->assertOk()->json();
+
+        $this->assertSame($this->account->id, $preview['cash_account_id']);
+        [$income, $out] = $preview['rows'];
+        $this->assertSame(['income', 250000], [$income['type'], (int) $income['amount']]);
+        $this->assertSame($this->kendaraan->id, $income['pocket_id']);
+        $this->assertSame('new', $income['status']);
+        $this->assertSame($category->id, $income['lines'][0]['category_id']);
+        $this->assertSame('Bpk Andi', $income['lines'][0]['counterparty']);
+        $this->assertSame('Persembahan kendaraan Oktober', $income['lines'][0]['description']);
+        $this->assertSame('transfer', $out['status']);
+        $this->assertSame($this->pembangunan->id, $out['pocket_id']);
     }
 }

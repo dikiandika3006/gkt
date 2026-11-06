@@ -48,11 +48,14 @@ class BankImportService
      */
     public function previewParsed(array $parsed, ?int $cashAccountId = null): array
     {
-        $account = $cashAccountId ? CashAccount::findOrFail($cashAccountId) : $this->detectAccount($parsed['account_number']);
         $rows = collect($parsed['rows']);
+        $account = $cashAccountId
+            ? CashAccount::findOrFail($cashAccountId)
+            : ($this->detectAccount($parsed['account_number']) ?? $this->detectAccountByName($rows));
         $pockets = $account?->has_pockets ? $account->pockets()->get() : collect();
 
         $categories = Category::where('is_active', true)->where('nature', '!=', CategoryNature::Transfer->value)->get();
+        $transferNames = Category::where('nature', CategoryNature::Transfer->value)->pluck('name')->map(fn ($n) => Str::lower($n))->flip();
         $recurring = RecurringExpense::where('is_active', true)->get();
 
         $imported = $account
@@ -62,8 +65,11 @@ class BankImportService
             ? Transaction::where('cash_account_id', $account->id)->whereNull('bank_ref')->max('date')
             : null;
 
-        $previewRows = $rows->map(function (array $row) use ($account, $imported, $lastManualDate, $categories, $recurring, $pockets) {
+        $previewRows = $rows->map(function (array $row) use ($account, $imported, $lastManualDate, $categories, $recurring, $pockets, $transferNames) {
             [$status, $reason] = $this->status($row, $account, $imported, $lastManualDate);
+            if ($status !== 'imported' && ! empty($row['category']) && $transferNames->has(Str::lower($row['category']))) {
+                [$status, $reason] = ['transfer', 'Mutasi antar kas/pocket — catat lewat menu Mutasi Antar Kas.'];
+            }
 
             return [
                 ...$row,
@@ -271,6 +277,17 @@ class BankImportService
             ->first(fn (CashAccount $a) => preg_replace('/\D/', '', $a->account_number) === $digits);
     }
 
+    /** File export Mutasi: semua baris berkolom Kas sama → cocokkan ke nama/kode kas. */
+    private function detectAccountByName(Collection $rows): ?CashAccount
+    {
+        $names = $rows->pluck('cash_account')->filter()->map(fn ($n) => Str::lower(trim($n)))->unique();
+        if ($names->count() !== 1) {
+            return null;
+        }
+
+        return CashAccount::all()->first(fn (CashAccount $a) => in_array($names->first(), [Str::lower($a->name), Str::lower((string) $a->code)], true));
+    }
+
     /** @return array{0: string, 1: ?string} */
     private function status(array $row, ?CashAccount $account, Collection $imported, ?string $lastManualDate): array
     {
@@ -304,6 +321,17 @@ class BankImportService
         $type = TransactionType::from($row['type']);
         $amount = (float) $row['amount'];
         $text = Str::upper($row['description']);
+
+        // (0) Kategori tertulis di file (mis. hasil export Mutasi aplikasi ini): pakai apa adanya.
+        if (! empty($row['category'])) {
+            $category = $categories->first(fn (Category $c) => Str::lower($c->name) === Str::lower(trim($row['category'])) && $c->type->allows($type));
+            if ($category) {
+                $line = $this->line($category->id, $amount, trim($row['name']) ?: null, null, $row['date']);
+                $line['description'] = mb_substr($row['description'], 0, 255);
+
+                return [$line];
+            }
+        }
 
         // Riwayat import ke nama pengirim/penerima yang sama, terbaru dulu (dikelompokkan per baris bank).
         $history = $account ? $this->history($account->id, $type, $row['name']) : collect();

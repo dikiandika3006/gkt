@@ -57,7 +57,8 @@ class TransactionController extends Controller
                 $t->description,
                 $t->type === TransactionType::Income ? (float) $t->amount : 0,
                 $t->type === TransactionType::Expense ? (float) $t->amount : 0,
-                $t->pocket ? "{$t->cashAccount?->name} · {$t->pocket->name}" : (string) $t->cashAccount?->name,
+                (string) $t->cashAccount?->name,
+                (string) $t->pocket?->name,
                 (string) $t->reference,
                 (string) $t->notes,
             ])
@@ -68,7 +69,7 @@ class TransactionController extends Controller
         return $excel->download('transaksi-'.now()->format('Ymd-His').'.xlsx', [[
             'title' => 'Data Mutasi',
             'heading' => ['Data Mutasi', $period === 's/d' ? 'Semua periode' : "Periode {$period}"],
-            'headers' => ['Periode', 'Tanggal', 'Nomor', 'Kelompok', 'Kategori', 'Nama', 'Keterangan', 'Masuk', 'Keluar', 'Kas', 'Referensi', 'Catatan'],
+            'headers' => ['Periode', 'Tanggal', 'Nomor', 'Kelompok', 'Kategori', 'Nama', 'Keterangan', 'Masuk', 'Keluar', 'Kas', 'Pocket', 'Referensi', 'Catatan'],
             'rows' => $rows,
             'money_from' => 7,
         ]]);

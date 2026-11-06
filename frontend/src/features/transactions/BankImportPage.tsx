@@ -52,6 +52,8 @@ const ROLE_LABELS: Record<ImportColumnRole, string> = {
   balance: 'Saldo',
   pocket: 'Pocket',
   name: 'Nama',
+  category: 'Kategori',
+  cash_account: 'Kas / Rekening',
 }
 const ROLES = Object.keys(ROLE_LABELS) as ImportColumnRole[]
 const IGNORE = '__ignore'
@@ -80,6 +82,7 @@ const STATUS: Record<BankImportStatus, { label: string; variant: 'secondary' | '
   new: { label: 'Baru', variant: 'secondary' },
   possible_duplicate: { label: 'Mungkin duplikat', variant: 'destructive' },
   imported: { label: 'Sudah diimpor', variant: 'outline' },
+  transfer: { label: 'Mutasi antar kas', variant: 'outline' },
 }
 
 let uidSeq = 0

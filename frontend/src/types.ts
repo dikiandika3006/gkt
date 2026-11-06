@@ -140,7 +140,7 @@ export interface BankImportLine {
   recurring_period: string | null
 }
 
-export type BankImportStatus = 'new' | 'possible_duplicate' | 'imported'
+export type BankImportStatus = 'new' | 'possible_duplicate' | 'imported' | 'transfer'
 
 export interface BankImportRow {
   key: string
@@ -160,7 +160,7 @@ export interface BankImportRow {
   lines: BankImportLine[]
 }
 
-export type ImportColumnRole = 'date' | 'description' | 'debit' | 'credit' | 'amount' | 'direction' | 'balance' | 'pocket' | 'name'
+export type ImportColumnRole = 'date' | 'description' | 'debit' | 'credit' | 'amount' | 'direction' | 'balance' | 'pocket' | 'name' | 'category' | 'cash_account'
 
 export interface ImportDetection {
   sheet: string
