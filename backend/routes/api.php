@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CashAccountController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CounterpartyController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DatabaseBackupController;
 use App\Http\Controllers\Api\FundRequestController;
 use App\Http\Controllers\Api\InsightController;
 use App\Http\Controllers\Api\OfferingReportController;
@@ -135,5 +136,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/permissions', [PermissionController::class, 'update']);
         Route::get('/settings', [SettingController::class, 'show']);
         Route::put('/settings', [SettingController::class, 'update']);
+
+        // Form rahasia Backup & Restore database (About → Alt+F7). Selain unlock, wajib PIN (config/backup.php).
+        Route::prefix('backup')->controller(DatabaseBackupController::class)->group(function () {
+            Route::post('/unlock', 'unlock')->middleware('throttle:5,1');
+            Route::get('/', 'index');
+            Route::post('/', 'store');
+            Route::post('/restore', 'restore');
+            Route::get('/{name}/download', 'download');
+            Route::delete('/{name}', 'destroy');
+        });
     });
 });

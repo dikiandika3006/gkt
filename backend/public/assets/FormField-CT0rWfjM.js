@@ -1,1 +1,0 @@
-import{y as e}from"./card-CYEo4yGe.js";import{t}from"./index-9NbvCZfw.js";var n=e();function r({label:e,htmlFor:r,error:i,children:a}){return(0,n.jsxs)(`div`,{className:`grid gap-1.5`,children:[(0,n.jsx)(t,{htmlFor:r,children:e}),a,i&&(0,n.jsx)(`p`,{className:`text-xs text-destructive`,children:i})]})}export{r as t};
