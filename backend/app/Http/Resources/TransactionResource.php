@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\PeriodLockService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,6 +33,7 @@ class TransactionResource extends JsonResource
             'recurring_expense_id' => $this->recurring_expense_id,
             'recurring_period' => $this->recurring_period,
             'is_managed' => $this->isManaged(),
+            'locked' => app(PeriodLockService::class)->isLocked($this->date),
             'category' => new CategoryResource($this->whenLoaded('category')),
             'cash_account' => new CashAccountResource($this->whenLoaded('cashAccount')),
             'creator' => $this->whenLoaded('creator', fn () => $this->creator?->only('id', 'name')),

@@ -16,6 +16,7 @@ enum Module: string
     case FundRequests = 'fund_requests';
     case Reports = 'reports';
     case ReportSecretariat = 'report_secretariat';
+    case ReportDonors = 'report_donors';
     case Categories = 'categories';
     case CashAccounts = 'cash_accounts';
 
@@ -30,6 +31,7 @@ enum Module: string
             self::FundRequests => 'Kas Sekretariat',
             self::Reports => 'Laporan keuangan gereja',
             self::ReportSecretariat => 'Laporan Sekretariat',
+            self::ReportDonors => 'Rekap per Pemberi',
             self::Categories => 'Kategori',
             self::CashAccounts => 'Kas & Bank',
         };
@@ -46,6 +48,7 @@ enum Module: string
             self::FundRequests => 'Pengajuan dana & LPJ sekretariat',
             self::Reports => 'Rekap Bulanan, Ringkasan, Buku Kas, Analisa Kategori',
             self::ReportSecretariat => 'Laporan pemakaian dana Kas Sekretariat',
+            self::ReportDonors => 'Persembahan syukur & perpuluhan per nama jemaat (data pribadi)',
             self::Categories => 'Bagan akun / kategori transaksi',
             self::CashAccounts => 'Kas tunai & rekening bank',
         };
@@ -54,7 +57,7 @@ enum Module: string
     /** Modul yang hanya bisa dibaca (tidak ada aksi kelola). */
     public function viewOnly(): bool
     {
-        return in_array($this, [self::Dashboard, self::Reports, self::ReportSecretariat], true);
+        return in_array($this, [self::Dashboard, self::Reports, self::ReportSecretariat, self::ReportDonors], true);
     }
 
     /** @return list<PermissionLevel> */
@@ -68,6 +71,11 @@ enum Module: string
     /** Hak default per role (sama dengan perilaku sebelum ada menu Hak Akses, kecuali sekretariat). */
     public function defaultFor(UserRole $role): PermissionLevel
     {
+        // Data pribadi pemberi persembahan: default hanya admin, bisa diberikan lewat menu Hak Akses.
+        if ($this === self::ReportDonors) {
+            return $role === UserRole::Admin ? PermissionLevel::Manage : PermissionLevel::None;
+        }
+
         return match ($role) {
             UserRole::Admin => PermissionLevel::Manage,
             UserRole::Bendahara => $this->viewOnly() ? PermissionLevel::View : PermissionLevel::Manage,

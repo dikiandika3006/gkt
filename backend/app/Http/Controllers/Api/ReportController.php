@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\Module;
 use App\Http\Controllers\Controller;
 use App\Models\CashAccount;
+use App\Services\AppSettingService;
 use App\Services\ExcelExportService;
 use App\Services\FinanceReportService;
 use App\Services\FundRequestService;
@@ -16,6 +17,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    private const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
     public function __construct(private FinanceReportService $report, private FundRequestService $fundRequests) {}
 
     /** Rekap pemasukan & pengeluaran per kategori + saldo awal/akhir. */
@@ -46,6 +49,15 @@ class ReportController extends Controller
         ]);
     }
 
+    /** Laporan keuangan bulanan siap cetak (kop & penandatangan dari menu Setting). */
+    public function monthlyStatement(Request $request, AppSettingService $settings): JsonResponse
+    {
+        return response()->json([
+            ...$this->report->monthlyStatement($this->month($request)),
+            'header' => $settings->reportHeader(),
+        ]);
+    }
+
     /** Analisa pengeluaran operasional per kategori (peringkat). */
     public function categories(Request $request): JsonResponse
     {
@@ -67,7 +79,11 @@ class ReportController extends Controller
 
     public function export(Request $request, ExcelExportService $excel, string $name): StreamedResponse
     {
-        $module = $name === 'secretariat' ? Module::ReportSecretariat : Module::Reports;
+        $module = match ($name) {
+            'secretariat' => Module::ReportSecretariat,
+            'donors' => Module::ReportDonors,
+            default => Module::Reports,
+        };
         abort_unless($request->user()->hasPermission($module), 403, 'Anda tidak memiliki akses untuk aksi ini.');
 
         return match ($name) {
@@ -75,6 +91,8 @@ class ReportController extends Controller
             'monthly' => $this->exportMonthly($request, $excel),
             'categories' => $this->exportCategories($request, $excel),
             'secretariat' => $this->exportSecretariat($request, $excel),
+            'monthly-statement' => $this->exportMonthlyStatement($request, $excel),
+            'budget', 'fund-position', 'deposits-loans', 'comparison', 'offering-trend', 'donors', 'annual' => app(ExtendedReportController::class)->export($request, $excel, $name),
             default => abort(404, 'Laporan tidak dikenal.'),
         };
     }
@@ -140,6 +158,51 @@ class ReportController extends Controller
                 'rows' => $matrixRows,
                 'money_from' => 2,
             ],
+        ]);
+    }
+
+    private function exportMonthlyStatement(Request $request, ExcelExportService $excel): StreamedResponse
+    {
+        $month = $this->month($request);
+        $data = $this->report->monthlyStatement($month);
+        $general = $data['general'];
+        $totals = $general['totals'];
+
+        $rows = [['SALDO AWAL KAS UMUM', '', $general['opening_balance']], ['', '', null], ['PENERIMAAN OPERASIONAL', '', null]];
+        $section = function (array $groups) use (&$rows) {
+            foreach ($groups as $g) {
+                $rows[] = [$g['group'], '', $g['total']];
+                foreach ($g['categories'] as $c) {
+                    $rows[] = ['', $c['name'], $c['total']];
+                }
+            }
+        };
+        $section($general['income']->all());
+        $rows[] = ['Jumlah Penerimaan', '', $totals['income']];
+        $rows[] = ['', '', null];
+        $rows[] = ['PENGELUARAN OPERASIONAL', '', null];
+        $section($general['expense']->all());
+        $rows[] = ['Jumlah Pengeluaran', '', $totals['expense']];
+        $rows[] = ['SURPLUS / (DEFISIT)', '', $totals['net']];
+        $rows[] = ['', '', null];
+        $rows[] = ['Titipan & Pinjaman masuk', '', $totals['non_operational_in']];
+        $rows[] = ['Titipan & Pinjaman keluar', '', -$totals['non_operational_out']];
+        $rows[] = ['Mutasi antar kas (bersih)', '', round($totals['transfer_in'] - $totals['transfer_out'], 2)];
+        $rows[] = ['SALDO AKHIR KAS UMUM', '', $general['closing_balance']];
+
+        $accountRows = collect($general['accounts'])->map(fn ($a) => [$a['name'], '', $a['opening_balance'], $a['income'], $a['expense'], $a['closing_balance']])->all();
+        foreach ($data['pocket_accounts'] as $acc) {
+            $accountRows[] = [$acc['name'], '', $acc['opening_balance'], $acc['income'], $acc['expense'], $acc['closing_balance']];
+            foreach ($acc['pockets'] as $p) {
+                $accountRows[] = ['', $p['name'], $p['opening_balance'], $p['income'], $p['expense'], $p['closing_balance']];
+            }
+        }
+
+        $heading = ['Laporan Keuangan Bulanan', 'Bulan '.self::MONTHS[$month->month - 1].' '.$month->year];
+
+        return $excel->download("laporan-bulanan-{$month->format('Y-m')}.xlsx", [
+            ['title' => 'Kas Umum', 'heading' => $heading, 'headers' => ['Uraian', 'Kategori', 'Jumlah'], 'rows' => $rows, 'money_from' => 2],
+            ['title' => 'Posisi Kas', 'heading' => $heading, 'headers' => ['Kas / Rekening', 'Pocket', 'Saldo Awal', 'Masuk', 'Keluar', 'Saldo Akhir'], 'rows' => $accountRows, 'money_from' => 2],
         ]);
     }
 
@@ -254,6 +317,14 @@ class ReportController extends Controller
         abort_if($start->diffInMonths($end) > 36, 422, 'Rentang maksimal 36 bulan.');
 
         return [$start, $end, isset($data['cash_account_id']) ? (int) $data['cash_account_id'] : null];
+    }
+
+    /** Satu bulan (default bulan berjalan). */
+    private function month(Request $request): Carbon
+    {
+        $data = $request->validate(['month' => ['nullable', 'date_format:Y-m']]);
+
+        return isset($data['month']) ? Carbon::createFromFormat('Y-m-d', $data['month'].'-01')->startOfDay() : now()->startOfMonth();
     }
 
     /** @return array{0: int, 1: string, 2: string} */

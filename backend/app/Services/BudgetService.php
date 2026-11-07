@@ -103,6 +103,38 @@ class BudgetService
         };
     }
 
+    /**
+     * Laporan Realisasi Anggaran s/d akhir bulan $month: anggaran setahun, anggaran s/d bulan ini (prorata bulan),
+     * realisasi bulan ini & kumulatif (YTD), sisa, persentase, status.
+     */
+    public function monthlyReport(int $year, int $month): array
+    {
+        $monthStart = Carbon::create($year, $month, 1)->startOfDay();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+        $asOf = $monthEnd->isFuture() ? now() : $monthEnd;
+        $base = $this->realization($year, $asOf);
+
+        $byCategory = $this->report->byCategory($monthStart, $monthEnd);
+        $monthActual = $byCategory['income']->concat($byCategory['expense'])
+            ->keyBy(fn (array $row) => $row['category_id'].'|'.$row['type']);
+
+        $rows = $base['rows']->map(fn (array $r) => [
+            ...$r,
+            'budget_to_date' => round($r['amount'] * $month / 12, 2),
+            'month_actual' => round((float) ($monthActual[$r['category_id'].'|'.$r['type']]['total'] ?? 0), 2),
+        ])->values();
+
+        $sum = fn (string $type, string $field) => round((float) $rows->where('type', $type)->sum($field), 2);
+        $totals = [];
+        foreach (['income', 'expense'] as $type) {
+            foreach (['amount', 'budget_to_date', 'month_actual', 'actual', 'remaining'] as $field) {
+                $totals[$type][$field] = $sum($type, $field);
+            }
+        }
+
+        return ['year' => $year, 'month' => $monthStart->format('Y-m'), 'rows' => $rows, 'totals' => $totals];
+    }
+
     /** Porsi tahun yang sudah berjalan (0..1), dihitung per hari. */
     public function elapsedFraction(int $year, Carbon $asOf): float
     {
