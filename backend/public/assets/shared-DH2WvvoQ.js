@@ -1,0 +1,1 @@
+import{yt as e}from"./api-DRmIbKID.js";import{t}from"./badge-hnikC3os.js";var n=e(),r={diajukan:`outline`,ditransfer:`secondary`,lpj_sebagian:`secondary`,selesai:`default`};function i({status:e,label:i}){return(0,n.jsx)(t,{variant:r[e],children:i})}export{i as t};

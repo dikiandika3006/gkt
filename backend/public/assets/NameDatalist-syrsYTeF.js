@@ -1,0 +1,1 @@
+import{yt as e}from"./api-DRmIbKID.js";var t=e();function n({id:e,items:n}){return(0,t.jsx)(`datalist`,{id:e,children:n.map(e=>(0,t.jsx)(`option`,{value:e.value,children:e.hint??void 0},e.value))})}export{n as t};
