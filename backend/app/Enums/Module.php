@@ -19,6 +19,7 @@ enum Module: string
     case ReportDonors = 'report_donors';
     case Categories = 'categories';
     case CashAccounts = 'cash_accounts';
+    case TitheMembers = 'tithe_members';
 
     public function label(): string
     {
@@ -34,6 +35,7 @@ enum Module: string
             self::ReportDonors => 'Rekap per Pemberi',
             self::Categories => 'Kategori',
             self::CashAccounts => 'Kas & Bank',
+            self::TitheMembers => 'Nomor Perpuluhan',
         };
     }
 
@@ -51,6 +53,7 @@ enum Module: string
             self::ReportDonors => 'Persembahan syukur & perpuluhan per nama jemaat (data pribadi)',
             self::Categories => 'Bagan akun / kategori transaksi',
             self::CashAccounts => 'Kas tunai & rekening bank',
+            self::TitheMembers => 'Master nomor & alias perpuluhan jemaat (nama lengkap = data pribadi)',
         };
     }
 
@@ -74,6 +77,11 @@ enum Module: string
         // Data pribadi pemberi persembahan: default hanya admin, bisa diberikan lewat menu Hak Akses.
         if ($this === self::ReportDonors) {
             return $role === UserRole::Admin ? PermissionLevel::Manage : PermissionLevel::None;
+        }
+
+        // Master nomor perpuluhan berisi nama lengkap jemaat: default admin & bendahara saja.
+        if ($this === self::TitheMembers) {
+            return in_array($role, [UserRole::Admin, UserRole::Bendahara], true) ? PermissionLevel::Manage : PermissionLevel::None;
         }
 
         return match ($role) {

@@ -17,6 +17,7 @@ class OfferingReportResource extends JsonResource
             'period_start' => $this->period_start->toDateString(),
             'period_end' => $this->period_end->toDateString(),
             'notes' => $this->notes,
+            'difference_note' => $this->difference_note,
             'creator' => $this->whenLoaded('creator', fn () => $this->creator?->only('id', 'name')),
             'lines' => $this->whenLoaded('lines', fn () => $this->lines->map(fn ($l) => [
                 'id' => $l->id,

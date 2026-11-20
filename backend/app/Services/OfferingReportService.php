@@ -180,8 +180,13 @@ class OfferingReportService
             ]);
     }
 
-    /** @param array<int, int> $ids */
-    public function syncTransactions(OfferingReport $report, array $ids): void
+    /**
+     * Simpan hasil crosscheck. Bila masih selisih (kurang/lebih), keterangan selisih wajib diisi;
+     * bila cocok / belum ada mutasi, keterangan dikosongkan.
+     *
+     * @param  array<int, int>  $ids
+     */
+    public function syncTransactions(OfferingReport $report, array $ids, ?string $differenceNote = null): void
     {
         $ids = array_values(array_unique($ids));
 
@@ -201,7 +206,19 @@ class OfferingReportService
             throw ValidationException::withMessages(['transaction_ids' => 'Sebagian mutasi sudah dipakai di rekap persembahan lain.']);
         }
 
-        $report->transactions()->sync($ids);
+        DB::transaction(function () use ($report, $ids, $differenceNote) {
+            $report->transactions()->sync($ids);
+            $summary = $this->summary($report->load(['lines', 'transactions']));
+            $note = trim((string) $differenceNote);
+            $hasDifference = in_array($summary['status'], ['kurang', 'lebih'], true);
+
+            if ($hasDifference && $note === '') {
+                $amount = 'Rp '.number_format(abs($summary['difference']), 0, ',', '.');
+                throw ValidationException::withMessages(['difference_note' => "Ada selisih {$amount}. Isi keterangan kenapa selisih."]);
+            }
+
+            $report->update(['difference_note' => $hasDifference ? $note : null]);
+        });
     }
 
     /**
