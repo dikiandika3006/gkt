@@ -21,6 +21,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Saran nama "001/SVN" muncul di form Mutasi, Rekap Persembahan, dan Import mutasi bank — isian tetap teks bebas.',
       'Rekap per Pemberi menyatukan nama per nomor perpuluhan dan menampilkan nama jemaat dari master.',
       'Crosscheck Mutasi rekap persembahan: bila ada selisih, keterangan selisih wajib diisi sebelum disimpan.',
+      'About: kartu Status Database + tombol Update Database (backup otomatis → migrasi → refresh cache) setelah deploy, tanpa menunggu cron.',
     ],
   },
   {

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { formatDate } from '@/lib/format'
 import { APP_NAME, CHANGELOG, RULES } from './about'
 import { BackupDialog } from './BackupDialog'
+import { DatabaseStatusCard } from './DatabaseStatusCard'
 
 /** Setting → About: info aplikasi, aturan sistem, dan riwayat perubahan. */
 export default function AboutPage() {
@@ -33,6 +34,8 @@ export default function AboutPage() {
           <Info label="Pembaruan terakhir" value={latest ? formatDate(latest.date) : '-'} />
           <Info label="Jumlah pembaruan" value={`${CHANGELOG.length} catatan`} />
         </div>
+
+        <DatabaseStatusCard />
 
         <Card>
           <CardHeader>

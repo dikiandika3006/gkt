@@ -516,6 +516,25 @@ export interface NameSuggestion {
   hint?: string | null
 }
 
+/** Setting → About: status database & hasil Update Database. */
+export interface SystemStatus {
+  database: { ok: boolean; driver: string; name: string; error: string | null }
+  deployed_commit: string | null
+  last_applied_commit: string | null
+  pending_migrations: string[]
+  routes_cached: boolean
+  config_cached: boolean
+  needs_update: boolean
+}
+
+export interface SystemUpdateResult {
+  message: string
+  backup: string | null
+  migrate_output: string
+  steps: string[]
+  status: SystemStatus
+}
+
 export interface DonorRecap {
   year: number
   rows: { name: string; code: number | null; member_name: string | null; months: Record<string, number>; perpuluhan: number; syukur: number; total: number; count: number }[]

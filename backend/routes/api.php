@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RecurringExpenseController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\SystemUpdateController;
 use App\Http\Controllers\Api\TitheMemberController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
@@ -164,6 +165,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/permissions', [PermissionController::class, 'update']);
         Route::get('/settings', [SettingController::class, 'show']);
         Route::put('/settings', [SettingController::class, 'update']);
+
+        // Status database & Update Database (About): migrate + refresh cache seperti post-deploy.sh, backup otomatis dulu.
+        Route::get('/system/status', [SystemUpdateController::class, 'status']);
+        Route::post('/system/update', [SystemUpdateController::class, 'update'])->middleware('throttle:3,1');
 
         // Form rahasia Backup & Restore database (About → Alt+F7). Selain unlock, wajib PIN (config/backup.php).
         Route::prefix('backup')->controller(DatabaseBackupController::class)->group(function () {
