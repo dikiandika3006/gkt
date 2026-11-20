@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OfferingSection;
 use App\Models\OfferingReportLine;
+use App\Models\TitheMember;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -52,7 +53,8 @@ class OfferingAnalysisService
 
     /**
      * Persembahan syukur & perpuluhan per nama per bulan dalam setahun (data pribadi — modul report_donors).
-     * Nama disatukan tanpa beda huruf besar/kecil & spasi ganda.
+     * Nama disatukan tanpa beda huruf besar/kecil & spasi ganda. Nama yang cocok dengan master nomor perpuluhan
+     * ("001/SVN", "1/svn", "001", atau nama lengkap) disatukan per nomor dan diberi nama jemaat dari master.
      */
     public function donorRecap(int $year): array
     {
@@ -66,8 +68,25 @@ class OfferingAnalysisService
 
         $emptyMonths = array_fill_keys(array_map(fn ($m) => str_pad((string) $m, 2, '0', STR_PAD_LEFT), range(1, 12)), 0.0);
 
-        $rows = $lines->groupBy(fn (OfferingReportLine $l) => Str::lower(preg_replace('/\s+/', ' ', trim($l->name))))
-            ->map(function (Collection $items) use ($emptyMonths) {
+        $members = TitheMember::all();
+        $byCode = $members->keyBy('code');
+        $byName = $members->keyBy(fn (TitheMember $m) => Str::lower(preg_replace('/\s+/', ' ', trim($m->name))));
+        $memberOf = function (string $name) use ($byCode, $byName): ?TitheMember {
+            $normalized = Str::lower(preg_replace('/\s+/', ' ', trim($name)));
+            if (preg_match('/^0*(\d{1,6})\s*(\/.*)?$/', $normalized, $m) && $byCode->has((int) $m[1])) {
+                return $byCode->get((int) $m[1]);
+            }
+
+            return $byName->get($normalized);
+        };
+
+        $rows = $lines->groupBy(function (OfferingReportLine $l) use ($memberOf) {
+            $member = $memberOf($l->name);
+
+            return $member ? '#'.$member->code : Str::lower(preg_replace('/\s+/', ' ', trim($l->name)));
+        })
+            ->map(function (Collection $items) use ($emptyMonths, $memberOf) {
+                $member = $memberOf($items->first()->name);
                 $months = $emptyMonths;
                 foreach ($items as $l) {
                     $m = $l->report->service_date->format('m');
@@ -76,7 +95,9 @@ class OfferingAnalysisService
                 $bySection = fn (OfferingSection $s) => round((float) $items->filter(fn ($l) => $l->section === $s)->sum('amount'), 2);
 
                 return [
-                    'name' => preg_replace('/\s+/', ' ', trim($items->first()->name)),
+                    'name' => $member?->label ?? preg_replace('/\s+/', ' ', trim($items->first()->name)),
+                    'code' => $member?->code,
+                    'member_name' => $member?->name,
                     'months' => $months,
                     'perpuluhan' => $bySection(OfferingSection::Perpuluhan),
                     'syukur' => $bySection(OfferingSection::Syukur),

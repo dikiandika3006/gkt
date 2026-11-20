@@ -33,6 +33,7 @@ export type Module =
   | 'report_donors'
   | 'categories'
   | 'cash_accounts'
+  | 'tithe_members'
 export type PermissionLevel = 'none' | 'view' | 'manage'
 
 export interface PermissionMatrix {
@@ -498,9 +499,26 @@ export interface OfferingTrend {
   average: number
 }
 
+/** Master nomor perpuluhan jemaat. label = kode 3 digit + "/" + alias, mis. 001/SVN. */
+export interface TitheMember {
+  id: number
+  code: number
+  alias: string | null
+  name: string
+  label: string
+  is_active: boolean
+}
+
+/** Saran isian nama (teks bebas): label master nomor perpuluhan atau riwayat nama mutasi. */
+export interface NameSuggestion {
+  value: string
+  /** Nama lengkap jemaat (hanya bila punya hak modul Nomor Perpuluhan). */
+  hint?: string | null
+}
+
 export interface DonorRecap {
   year: number
-  rows: { name: string; months: Record<string, number>; perpuluhan: number; syukur: number; total: number; count: number }[]
+  rows: { name: string; code: number | null; member_name: string | null; months: Record<string, number>; perpuluhan: number; syukur: number; total: number; count: number }[]
   totals: { perpuluhan: number; syukur: number; total: number; donors: number }
 }
 
@@ -574,6 +592,8 @@ export interface OfferingReport {
   period_start: string
   period_end: string
   notes: string | null
+  /** Alasan selisih crosscheck (wajib bila status kurang/lebih saat disimpan). */
+  difference_note: string | null
   creator?: { id: number; name: string } | null
   lines?: OfferingLine[]
   transactions?: { id: number; number: string; date: string; description: string; counterparty: string | null; category: string | null; amount: number }[]

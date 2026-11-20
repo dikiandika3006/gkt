@@ -14,6 +14,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage } from '@/lib/api'
 import { formatDate, formatRupiah } from '@/lib/format'
+import { NameDatalist } from '@/components/NameDatalist'
 import { useAccessibleCashAccounts, useCategories, useCounterparties, useRecurringExpenses } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 import type { BankImportPreview, BankImportRow, BankImportStatus, Category, ImportColumnRole, ImportDetection } from '@/types'
@@ -370,11 +371,7 @@ export default function BankImportPage() {
             </div>
           </div>
 
-          <datalist id="import-counterparties">
-            {names.map((n) => (
-              <option key={n} value={n} />
-            ))}
-          </datalist>
+          <NameDatalist id="import-counterparties" items={names} />
 
           <div className="grid gap-3">
             {visible.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Tidak ada baris.</p>}

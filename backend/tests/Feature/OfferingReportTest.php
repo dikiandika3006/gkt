@@ -121,17 +121,42 @@ class OfferingReportTest extends TestCase
             ->assertJsonPath('end_date', '2026-10-29')
             ->assertJsonCount(3, 'data');
 
-        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id]])
+        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id], 'difference_note' => 'QRIS belum masuk'])
             ->assertJsonPath('data.summary.status', 'kurang')
-            ->assertJsonPath('data.summary.difference', -2_294_500);
+            ->assertJsonPath('data.summary.difference', -2_294_500)
+            ->assertJsonPath('data.difference_note', 'QRIS belum masuk');
 
-        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id, $b->id]])
+        // Cocok → keterangan selisih dikosongkan.
+        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id, $b->id], 'difference_note' => 'QRIS belum masuk'])
             ->assertJsonPath('data.summary.status', 'cocok')
-            ->assertJsonPath('data.summary.matched', 7_294_500);
+            ->assertJsonPath('data.summary.matched', 7_294_500)
+            ->assertJsonPath('data.difference_note', null);
 
         $extra = $this->deposit('2026-10-29', 10_000);
-        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id, $b->id, $extra->id]])
+        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id, $b->id, $extra->id], 'difference_note' => 'Setoran gabung'])
             ->assertJsonPath('data.summary.status', 'lebih');
+    }
+
+    public function test_difference_requires_note_and_rolls_back_without_it(): void
+    {
+        $id = $this->postJson('/api/offering-reports', $this->payload())->json('data.id');
+        $a = $this->deposit('2026-10-26', 5_000_000);
+        $b = $this->deposit('2026-10-28', 2_294_500);
+        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id, $b->id]])->assertOk();
+
+        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => [$a->id], 'difference_note' => '  '])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('difference_note')
+            ->assertJsonPath('errors.difference_note.0', 'Ada selisih Rp 2.294.500. Isi keterangan kenapa selisih.');
+
+        // Penautan tidak berubah karena ditolak.
+        $this->getJson("/api/offering-reports/{$id}")->assertJsonPath('data.summary.status', 'cocok')->assertJsonCount(2, 'data.transactions');
+
+        // Tanpa mutasi dicentang (status belum) → tidak wajib.
+        $this->putJson("/api/offering-reports/{$id}/transactions", ['transaction_ids' => []])
+            ->assertOk()
+            ->assertJsonPath('data.summary.status', 'belum')
+            ->assertJsonPath('data.difference_note', null);
     }
 
     public function test_a_mutation_can_only_be_linked_to_one_report(): void
@@ -140,7 +165,7 @@ class OfferingReportTest extends TestCase
         $second = $this->postJson('/api/offering-reports', $this->payload(['service_date' => '2026-11-01', 'period_start' => '2026-10-30', 'period_end' => '2026-11-05']))->json('data.id');
         $tx = $this->deposit('2026-10-26', 1_000_000);
 
-        $this->putJson("/api/offering-reports/{$first}/transactions", ['transaction_ids' => [$tx->id]])->assertOk();
+        $this->putJson("/api/offering-reports/{$first}/transactions", ['transaction_ids' => [$tx->id], 'difference_note' => 'Sebagian'])->assertOk();
         $this->putJson("/api/offering-reports/{$second}/transactions", ['transaction_ids' => [$tx->id]])
             ->assertJsonValidationErrors('transaction_ids');
 

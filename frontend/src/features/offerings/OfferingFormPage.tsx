@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/FormField'
 import { MoneyInput } from '@/components/MoneyInput'
+import { NameDatalist } from '@/components/NameDatalist'
 import { PageHeader } from '@/components/PageHeader'
 import { api, errorMessage, fieldErrors } from '@/lib/api'
 import { formatRupiah } from '@/lib/format'
@@ -67,6 +68,29 @@ function mergeIbadah(template: OfferingTemplate['ibadah_lines'], current: Ibadah
   }))
   const newFundId = template.find((t) => t.offering_fund_id)?.offering_fund_id ?? null
   return { rows, movedFund: !!oldFundId && oldFundId !== newFundId && fundAmounts.some((a) => Number(a) > 0) }
+}
+
+/**
+ * Saat ubah rekap: tampilkan lagi baris template yang tidak tersimpan (jumlahnya kosong/0 saat disimpan).
+ * Baris tersimpan dicocokkan per label + pos; yang tidak ada di template tetap dipertahankan di akhir.
+ */
+function fillIbadahFromTemplate(template: OfferingTemplate['ibadah_lines'], saved: IbadahValues[]): IbadahValues[] {
+  const key = (label: string, fundId: number | null) => `${label}|${fundId ?? ''}`
+  const savedByKey = new Map(saved.map((s) => [key(s.label, s.offering_fund_id), s]))
+  const savedLabels = new Set(saved.map((s) => s.label))
+  const used = new Set<string>()
+  const rows: IbadahValues[] = []
+  for (const t of template) {
+    const k = key(t.label, t.offering_fund_id)
+    const match = savedByKey.get(k)
+    if (match) {
+      rows.push(match)
+      used.add(k)
+    } else if (!savedLabels.has(t.label)) {
+      rows.push({ ...t, amount: '' })
+    }
+  }
+  return [...rows, ...saved.filter((s) => !used.has(key(s.label, s.offering_fund_id)))]
 }
 
 /** Form rekap persembahan mingguan. Rekening tujuan ditentukan otomatis oleh Master Pos Persembahan. */
@@ -128,6 +152,16 @@ export default function OfferingFormPage() {
     })
     setServiceDate(r.service_date)
   }, [existing.data, reset])
+
+  // Ubah rekap: lengkapi baris Ibadah dengan baris template yang belum tersimpan (sekali per data dimuat).
+  const filledFor = useRef<OfferingReport | null>(null)
+  useEffect(() => {
+    const r = existing.data
+    if (!r || !tpl || regenerate.current || tpl.service_date !== r.service_date || filledFor.current === r) return
+    filledFor.current = r
+    ibadah.replace(fillIbadahFromTemplate(tpl.ibadah_lines, getValues('ibadah')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing.data, tpl])
 
   // Rekap baru / tanggal diganti: susun ulang baris Ibadah dari template minggu itu.
   useEffect(() => {
@@ -422,11 +456,7 @@ function LineRow({ index, section, register, control, fundId, onFund, funds, mai
               aria-invalid={!!errors.name}
               {...register(`lines.${index}.name`, { onChange: (e) => setSearch(e.target.value) })}
             />
-            <datalist id={listId}>
-              {names.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
+            <NameDatalist id={listId} items={names} />
             {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
           </div>
         )}

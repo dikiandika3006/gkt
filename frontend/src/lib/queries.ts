@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/AuthContext'
 import { api } from '@/lib/api'
-import type { CashAccount, Category, FundAccountSummary, RecurringExpense, TransactionType } from '@/types'
+import type { CashAccount, Category, FundAccountSummary, NameSuggestion, RecurringExpense, TitheMember, TransactionType } from '@/types'
 
 export function useCategories(params: { type?: TransactionType | ''; activeOnly?: boolean; excludeTransfer?: boolean } = {}) {
   return useQuery({
@@ -53,10 +53,35 @@ export function useFundAccountSummary(cashAccountId?: string) {
   })
 }
 
+/** Saran nama jemaat/penerima: master nomor perpuluhan (001/SVN) dulu, lalu riwayat nama di mutasi. Isian tetap teks bebas. */
 export function useCounterparties(search: string) {
   return useQuery({
     queryKey: ['counterparties', search],
-    queryFn: async () => (await api.get<{ data: string[] }>('/counterparties', { params: { search: search || undefined } })).data.data,
+    queryFn: async (): Promise<NameSuggestion[]> => {
+      const res = (
+        await api.get<{ data: string[]; members?: { label: string; name: string | null }[] }>('/counterparties', {
+          params: { search: search || undefined },
+        })
+      ).data
+      const seen = new Set<string>()
+      const list: NameSuggestion[] = []
+      for (const m of res.members ?? []) {
+        if (!seen.has(m.label)) list.push({ value: m.label, hint: m.name })
+        seen.add(m.label)
+      }
+      for (const n of res.data) {
+        if (!seen.has(n)) list.push({ value: n })
+        seen.add(n)
+      }
+      return list
+    },
     staleTime: 60_000,
+  })
+}
+
+export function useTitheMembers() {
+  return useQuery({
+    queryKey: ['tithe-members'],
+    queryFn: async () => (await api.get<{ data: TitheMember[] }>('/tithe-members')).data.data,
   })
 }

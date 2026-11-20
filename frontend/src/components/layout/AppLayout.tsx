@@ -1,7 +1,7 @@
 import { Fragment, Suspense, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { BarChart3, CalendarCheck, ChevronDown, ClipboardList, FolderTree, HandCoins, History, Info, LayoutDashboard, Loader2, LogOut, PiggyBank, ReceiptText, Settings, Settings2, ShieldCheck, Users, Wallet } from 'lucide-react'
+import { BarChart3, CalendarCheck, ChevronDown, ClipboardList, FolderTree, HandCoins, History, Info, LayoutDashboard, ListOrdered, Loader2, LogOut, PiggyBank, ReceiptText, Settings, Settings2, ShieldCheck, Users, Wallet } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -53,6 +53,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { to: '/categories', label: 'Kategori', icon: FolderTree, modules: ['categories'] },
       { to: '/cash-accounts', label: 'Kas & Bank', icon: Wallet, modules: ['cash_accounts'] },
       { to: '/offerings/settings', label: 'Pos Persembahan', icon: Settings2, modules: ['offerings'] },
+      { to: '/tithe-members', label: 'Nomor Perpuluhan', icon: ListOrdered, modules: ['tithe_members'] },
       { to: '/users', label: 'Pengguna', icon: Users, roles: ['admin'] },
       { to: '/activity-logs', label: 'Log Aktivitas', icon: History, roles: ['admin'] },
       { to: '/permissions', label: 'Hak Akses', icon: ShieldCheck, roles: ['admin'] },

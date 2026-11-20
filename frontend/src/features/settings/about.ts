@@ -14,6 +14,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-11-20',
+    title: 'Nomor Perpuluhan & keterangan selisih crosscheck',
+    changes: [
+      'Master Nomor Perpuluhan (Nama, Nomor, Alias) + import dari Excel; modul Hak Akses baru, default admin & bendahara.',
+      'Saran nama "001/SVN" muncul di form Mutasi, Rekap Persembahan, dan Import mutasi bank — isian tetap teks bebas.',
+      'Rekap per Pemberi menyatukan nama per nomor perpuluhan dan menampilkan nama jemaat dari master.',
+      'Crosscheck Mutasi rekap persembahan: bila ada selisih, keterangan selisih wajib diisi sebelum disimpan.',
+    ],
+  },
+  {
     date: '2026-11-09',
     title: 'Menu Laporan baru & 10 laporan tambahan',
     changes: [

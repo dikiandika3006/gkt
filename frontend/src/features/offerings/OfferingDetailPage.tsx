@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
 import { useAuth } from '@/features/auth/AuthContext'
-import { api, errorMessage } from '@/lib/api'
+import { api, errorMessage, fieldErrors } from '@/lib/api'
 import { formatDate, formatRupiah } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { OfferingCandidate, OfferingReport } from '@/types'
@@ -118,6 +119,10 @@ export default function OfferingDetailPage() {
 function Crosscheck({ report, canWrite, onSaved }: { report: OfferingReport; canWrite: boolean; onSaved: (fresh: OfferingReport) => void }) {
   const [range, setRange] = useState<{ start_date?: string; end_date?: string }>({})
   const [selected, setSelected] = useState<Set<number> | null>(null)
+  // null = belum diubah → pakai keterangan tersimpan.
+  const [noteDraft, setNoteDraft] = useState<string | null>(null)
+  const [noteError, setNoteError] = useState<string | null>(null)
+  const note = noteDraft ?? report.difference_note ?? ''
 
   const candidates = useQuery({
     queryKey: ['offering-reports', 'candidates', report.id, range],
@@ -135,6 +140,8 @@ function Crosscheck({ report, canWrite, onSaved }: { report: OfferingReport; can
   const chosenTotal = rows.filter((r) => chosen.has(r.id)).reduce((sum, r) => sum + r.amount, 0)
   const s = report.summary
   const liveDiff = chosenTotal - s.expected_deposit
+  const hasDifference = chosen.size > 0 && Math.abs(liveDiff) >= 0.01
+  const dirty = !!selected || noteDraft !== null
   const template = useQuery({
     queryKey: ['offering-reports', 'template'],
     queryFn: async () => (await api.get<{ default_cash_account_id: number | null }>('/offering-reports/template')).data,
@@ -144,15 +151,34 @@ function Crosscheck({ report, canWrite, onSaved }: { report: OfferingReport; can
 
   const save = useMutation({
     mutationFn: async () =>
-      (await api.put<{ data: OfferingReport }>(`/offering-reports/${report.id}/transactions`, { transaction_ids: [...chosen] })).data.data,
+      (
+        await api.put<{ data: OfferingReport }>(`/offering-reports/${report.id}/transactions`, {
+          transaction_ids: [...chosen],
+          difference_note: hasDifference ? note.trim() || null : null,
+        })
+      ).data.data,
     onSuccess: (fresh) => {
       toast.success('Hasil crosscheck disimpan')
       setSelected(null)
+      setNoteDraft(null)
+      setNoteError(null)
       onSaved(fresh)
       candidates.refetch()
     },
-    onError: (err) => toast.error(errorMessage(err)),
+    onError: (err) => {
+      const fe = fieldErrors(err)
+      if (fe.difference_note) setNoteError(fe.difference_note)
+      else toast.error(errorMessage(err))
+    },
   })
+
+  const submit = () => {
+    if (hasDifference && !note.trim()) {
+      setNoteError(`Ada selisih ${formatRupiah(Math.abs(liveDiff))}. Isi keterangan kenapa selisih.`)
+      return
+    }
+    save.mutate()
+  }
 
   const toggle = (id: number) => {
     const next = new Set(chosen)
@@ -203,6 +229,37 @@ function Crosscheck({ report, canWrite, onSaved }: { report: OfferingReport; can
         </Card>
       </div>
 
+      {hasDifference && (canWrite || note) && (
+        <Card className={cn(noteError && 'border-destructive/50')}>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Keterangan selisih {canWrite && <span className="text-destructive">*</span>}
+            </CardTitle>
+            <CardDescription>Jelaskan kenapa mutasi yang dicocokkan berbeda {formatRupiah(Math.abs(liveDiff))} dari rekap.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-1.5">
+            {canWrite ? (
+              <>
+                <Textarea
+                  aria-label="Keterangan selisih"
+                  aria-invalid={!!noteError}
+                  maxLength={1000}
+                  placeholder="mis. Setoran QRIS minggu ini baru masuk tanggal 3; uang sobek Rp 10.000 belum ditukar"
+                  value={note}
+                  onChange={(e) => {
+                    setNoteDraft(e.target.value)
+                    setNoteError(null)
+                  }}
+                />
+                {noteError && <p className="text-xs text-destructive">{noteError}</p>}
+              </>
+            ) : (
+              <p className="text-sm whitespace-pre-line">{note}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {elsewhere.length > 0 && (
         <Card>
           <CardHeader>
@@ -244,7 +301,7 @@ function Crosscheck({ report, canWrite, onSaved }: { report: OfferingReport; can
               onChange={(e) => e.target.value && setRange((r) => ({ ...r, end_date: e.target.value, start_date: r.start_date ?? candidates.data?.start_date }))}
             />
             {canWrite && (
-              <Button disabled={!selected || save.isPending} onClick={() => save.mutate()}>
+              <Button disabled={!dirty || save.isPending} onClick={submit}>
                 {save.isPending ? <Loader2 className="animate-spin" /> : <Save />} Simpan
               </Button>
             )}

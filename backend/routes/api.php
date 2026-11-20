@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RecurringExpenseController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\TitheMemberController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\UserController;
@@ -53,10 +54,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/assistant/ask', [AssistantController::class, 'ask'])->middleware('throttle:30,1');
     });
 
+    // Saran nama jemaat/penerima (riwayat mutasi + master nomor perpuluhan) untuk form Mutasi & Rekap Persembahan.
+    Route::get('/counterparties', CounterpartyController::class)->middleware('permission:transactions|offerings,view');
+
     // Mutasi (transaksi kas, import CSV bank, mutasi antar kas).
     Route::middleware('permission:transactions,view')->group(function () {
         Route::get('/transactions/export', [TransactionController::class, 'export']);
-        Route::get('/counterparties', CounterpartyController::class);
         Route::get('/transfers/{group}', [TransferController::class, 'show'])->whereUuid('group');
         Route::apiResource('transactions', TransactionController::class)->only(['index', 'show']);
     });
@@ -147,6 +150,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('categories', CategoryController::class)->except(['index', 'show'])->middleware('permission:categories,manage');
     Route::get('/cash-accounts/{cash_account}', [CashAccountController::class, 'show'])->middleware('permission:cash_accounts,view');
     Route::apiResource('cash-accounts', CashAccountController::class)->except(['index', 'show'])->middleware('permission:cash_accounts,manage');
+    Route::get('/tithe-members', [TitheMemberController::class, 'index'])->middleware('permission:tithe_members,view');
+    Route::middleware('permission:tithe_members,manage')->group(function () {
+        Route::post('/tithe-members/import', [TitheMemberController::class, 'import']);
+        Route::apiResource('tithe-members', TitheMemberController::class)->only(['store', 'update', 'destroy']);
+    });
 
     // Admin saja.
     Route::middleware('role:admin')->group(function () {

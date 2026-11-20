@@ -110,9 +110,10 @@ class OfferingReportController extends Controller
         $data = $request->validate([
             'transaction_ids' => ['present', 'array', 'max:500'],
             'transaction_ids.*' => ['integer', 'distinct'],
-        ]);
+            'difference_note' => ['nullable', 'string', 'max:1000'],
+        ], ['difference_note.max' => 'Keterangan selisih maksimal 1000 karakter.']);
 
-        $this->service->syncTransactions($offeringReport, $data['transaction_ids']);
+        $this->service->syncTransactions($offeringReport, $data['transaction_ids'], $data['difference_note'] ?? null);
 
         return new OfferingReportResource($this->service->load($offeringReport->fresh()));
     }

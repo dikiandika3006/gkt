@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** Rekap persembahan mingguan untuk warta. Tidak membuat transaksi; dicocokkan dengan mutasi masuk. */
-#[Fillable(['service_date', 'week_of_month', 'period_start', 'period_end', 'notes', 'created_by'])]
+#[Fillable(['service_date', 'week_of_month', 'period_start', 'period_end', 'notes', 'difference_note', 'created_by'])]
 class OfferingReport extends Model
 {
     use LogsActivity;

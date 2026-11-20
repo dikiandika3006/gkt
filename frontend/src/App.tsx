@@ -19,6 +19,7 @@ const FundRequestsPage = lazy(() => import('@/features/fund-requests/FundRequest
 const FundRequestDetailPage = lazy(() => import('@/features/fund-requests/FundRequestDetailPage'))
 const CategoriesPage = lazy(() => import('@/features/categories/CategoriesPage'))
 const CashAccountsPage = lazy(() => import('@/features/cash-accounts/CashAccountsPage'))
+const TitheMembersPage = lazy(() => import('@/features/tithe-members/TitheMembersPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
 const ActivityLogsPage = lazy(() => import('@/features/activity-logs/ActivityLogsPage'))
 const PermissionsPage = lazy(() => import('@/features/permissions/PermissionsPage'))
@@ -73,6 +74,9 @@ export default function App() {
               </Route>
               <Route element={<ProtectedRoute module="cash_accounts" />}>
                 <Route path="cash-accounts" element={<CashAccountsPage />} />
+              </Route>
+              <Route element={<ProtectedRoute module="tithe_members" />}>
+                <Route path="tithe-members" element={<TitheMembersPage />} />
               </Route>
               <Route element={<ProtectedRoute roles={['admin']} />}>
                 <Route path="users" element={<UsersPage />} />

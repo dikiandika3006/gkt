@@ -241,14 +241,14 @@ class ExtendedReportController extends Controller
     {
         abort_unless($request->user()->hasPermission(Module::ReportDonors), 403, 'Anda tidak memiliki akses untuk aksi ini.');
         $data = $this->offerings->donorRecap($this->year($request));
-        $rows = $data['rows']->map(fn ($r) => [$r['name'], ...array_values($r['months']), $r['perpuluhan'], $r['syukur'], $r['total']])->all();
+        $rows = $data['rows']->map(fn ($r) => [$r['name'], $r['member_name'] ?? '', ...array_values($r['months']), $r['perpuluhan'], $r['syukur'], $r['total']])->all();
 
         return $excel->download("rekap-pemberi-{$data['year']}.xlsx", [[
             'title' => 'Rekap per Pemberi',
             'heading' => ['Rekap Persembahan per Pemberi '.$data['year'], 'RAHASIA — data pribadi jemaat'],
-            'headers' => ['Nama', ...array_map(fn ($m) => substr($m, 0, 3), self::MONTHS), 'Perpuluhan', 'Syukur', 'Total'],
+            'headers' => ['Nama / Kode', 'Nama Jemaat', ...array_map(fn ($m) => substr($m, 0, 3), self::MONTHS), 'Perpuluhan', 'Syukur', 'Total'],
             'rows' => $rows,
-            'money_from' => 1,
+            'money_from' => 2,
         ]]);
     }
 

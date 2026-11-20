@@ -21,7 +21,8 @@ export default function DonorsPage() {
     queryFn: async () => (await api.get<DonorRecap>('/reports/donors', { params: { year } })).data,
   })
 
-  const rows = (data?.rows ?? []).filter((r) => r.name.toLowerCase().includes(search.trim().toLowerCase()))
+  const q = search.trim().toLowerCase()
+  const rows = (data?.rows ?? []).filter((r) => r.name.toLowerCase().includes(q) || (r.member_name ?? '').toLowerCase().includes(q))
   const num = 'text-right tabular-nums whitespace-nowrap text-xs'
   const amount = (v: number) => (v ? formatRupiah(v) : '')
 
@@ -38,7 +39,7 @@ export default function DonorsPage() {
 
       <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm print:hidden">
         <ShieldAlert className="mt-0.5 size-4 shrink-0 text-warning" />
-        <p>Berisi data pribadi jemaat. Jangan dibagikan atau diumumkan. Data diambil dari nama di Rekap Persembahan bagian Syukur & Perpuluhan.</p>
+        <p>Berisi data pribadi jemaat. Jangan dibagikan atau diumumkan. Data diambil dari nama di Rekap Persembahan bagian Syukur & Perpuluhan; nama yang cocok dengan Master Nomor Perpuluhan disatukan per nomor.</p>
       </div>
 
       <PrintTitle title={`Rekap per Pemberi ${year}`} subtitle="RAHASIA — data pribadi jemaat" />
@@ -69,7 +70,10 @@ export default function DonorsPage() {
               )}
               {rows.map((r) => (
                 <TableRow key={r.name}>
-                  <TableCell className="sticky left-0 bg-card pl-4 font-medium whitespace-nowrap">{r.name}</TableCell>
+                  <TableCell className="sticky left-0 bg-card pl-4 whitespace-nowrap">
+                    <div className="font-medium">{r.name}</div>
+                    {r.member_name && <div className="text-xs text-muted-foreground">{r.member_name}</div>}
+                  </TableCell>
                   {Object.values(r.months).map((v, i) => (
                     <TableCell key={i} className={num}>
                       {amount(v)}

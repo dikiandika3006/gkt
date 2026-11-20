@@ -14,6 +14,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { SelectField } from '@/components/SelectField'
 import { api, errorMessage, fieldErrors } from '@/lib/api'
 import { formatRupiah, toDateInput } from '@/lib/format'
+import { NameDatalist } from '@/components/NameDatalist'
 import { useAccessibleCashAccounts, useCategories, useCounterparties, useRecurringExpenses } from '@/lib/queries'
 import type { Transaction } from '@/types'
 
@@ -229,11 +230,7 @@ export function TransactionFormDialog({ open, onOpenChange, transaction, draft }
           </FormField>
           <FormField label="Nama (jemaat / penerima)" htmlFor="counterparty" error={errors.counterparty?.message}>
             <Input id="counterparty" list={listId} autoComplete="off" placeholder="Opsional" {...register('counterparty')} />
-            <datalist id={listId}>
-              {names.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
+            <NameDatalist id={listId} items={names} />
           </FormField>
           <div className="sm:col-span-2">
             <FormField label="Keterangan" htmlFor="description" error={errors.description?.message}>
